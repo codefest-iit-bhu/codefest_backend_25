@@ -1,16 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
-const jwt = require("jsonwebtoken");
-const db = require("./../db/conn.js");
 const check_user = require("../controllers/auth/check_user.js");
 const newController = require("../controllers/auth/new.controller.js");
-const loginController = require("../controllers/auth/login.controller.js");
+const login_password = require("../controllers/auth/login_password.js");
 router.get("/", (req, res) => {
   res.send("auth");
 });
 
-router.post("/login", loginController);
+router.post("/login_password", login_password);
 
 router.post("/new", newController);
 

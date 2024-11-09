@@ -4,7 +4,7 @@ module.exports = async (req, res) => {
   const collection = await db.collection("users");
   result = await collection.findOne(
     { email: res.email },
-    { projection: { cart: 0 } }
+    { projection: { cart: 0,password:0,_id:0 } }
   );
   res.json(result).status(200);
 };
