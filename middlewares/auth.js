@@ -1,17 +1,30 @@
-import { User } from "../models/user.js";
-import jwt from "jsonwebtoken";
-import ErrorHandler from "./error.js";
+import jwt from 'jsonwebtoken';
+import { User } from '../models/user.js';
 
-const isAuthenticated = async (req,_,next) => {
-    const authHeader = req.headers['authorization'];
+export const isAuthenticated = async (req, res, next) => {
+  try {
+    const { token } = req.cookies;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return next(new ErrorHandler("Authorization header missing or invalid"));
-    }    
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: 'Login first',
+      });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded);
-    next();
-}
 
-export default isAuthenticated;
+    if (!decoded) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid Token',
+      });
+    }
+
+    req.user = await User.findOne({ _id: decoded._id }).select('+password');
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1,18 +1,19 @@
 class ErrorHandler extends Error {
-    constructor(message, statusCode=500) {
-        super(message); 
-        //* constructor of Error(parent class)
-        this.statusCode = statusCode
+    constructor(message, statusCode) {
+      super(message);
+      this.statusCode = statusCode;
     }
-}
-
-export const errorMiddleware = (err,_,res,next) => {
-    err.message = err.message || "Internal server error";
+  }
+  
+  export const errorMiddleware = (err, req, res, next) => {
+    err.message = err.message || 'Internal Server Error';
     err.statusCode = err.statusCode || 500;
-    res.status(err.statusCode).json({
-        success: false,
-        message: err.message
+  
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
     });
-}
-
-export default ErrorHandler;
+  };
+  
+  export default ErrorHandler;
+  
