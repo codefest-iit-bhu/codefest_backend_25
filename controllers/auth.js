@@ -2,8 +2,9 @@ import { User } from '../models/user.js';
 import bcrypt from 'bcrypt';
 import { saveCookie } from '../utils/features.js';
 import ErrorHandler from '../middlewares/error.js';
+import { frontendUrl } from '../config/constants.js';
 
-export const createNewUser = async (req, res, next) => {
+export const signup = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
@@ -40,7 +41,25 @@ export const createGoogleUser = async (
   return cb(null, profile);
 };
 
-export const userLogin = async (req, res, next) => {
+export const googleCallback = async (user, req, res, next) => {
+  try {
+    const email = user.emails[0].value;
+    let googleUser = await User.findOne({ email }).select(
+      '+password'
+    );
+
+    if (googleUser.password === null) {
+      console.log(`${frontendUrl}/setPassword?email=${email}`);
+      res.redirect(`${frontendUrl}/setPassword?email=${email}`);
+    } else {
+      res.redirect(`${frontendUrl}/main?email=${email}`);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
@@ -48,10 +67,6 @@ export const userLogin = async (req, res, next) => {
 
     if (!user) {
       return next(new ErrorHandler('Invalid Email!', 404));
-    }
-
-    if (!user.password) {
-      return next(new ErrorHandler('Please Set Your Password!', 404));
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -65,7 +80,7 @@ export const userLogin = async (req, res, next) => {
   }
 };
 
-export const userProfile = (req, res) => {
+export const profile = (req, res) => {
   res.status(200).json({
     success: true,
     user: req.user,
@@ -74,20 +89,23 @@ export const userProfile = (req, res) => {
 
 export const passwordSetter = async (req, res, next) => {
   try {
-    if (req.user.password) {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email }).select('+password');
+
+    if (!user) {
+      return next(new ErrorHandler('User Not Found', 404));
+    }
+
+    if (user.password) {
       return next(new ErrorHandler('Password Already Set', 400));
     }
-    const { password } = req.body;
 
-    const hashedpswd = await bcrypt.hash(password, 5);
+    const hashedpswd = await bcrypt.hash(password, 10);
 
-    req.user.password = hashedpswd;
-    await req.user.save();
+    user.password = hashedpswd;
+    await user.save();
 
-    res.status(200).json({
-      success: true,
-      message: 'Password Set Successfully',
-    });
+    saveCookie(user, res, next, 201, 'User Created Successfully');
   } catch (error) {
     next(error);
   }

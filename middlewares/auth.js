@@ -21,7 +21,7 @@ export const isAuthenticated = async (req, res, next) => {
       });
     }
 
-    req.user = await User.findOne({ _id: decoded._id }).select('+password');
+    req.user = await User.findOne({ _id: decoded._id });
 
     next();
   } catch (error) {

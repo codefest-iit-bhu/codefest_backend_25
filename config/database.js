@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import { mongoUri } from "./constants.js";
 
 export const connectDB = () => {
-  mongoose
-    .connect(process.env.LOCAL_MONGO_URI, { dbName: 'codefest' })
+    mongoose.connect(mongoUri, {dbName: "codefest"})
     .then((c) => {
       console.log(`Database connected with ${c.connection.host}`);
     })

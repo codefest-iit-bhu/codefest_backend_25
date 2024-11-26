@@ -1,35 +1,24 @@
 import express from 'express';
-import userRouter from './routes/user.js';
+import authRouter from './routes/auth.js';
 import { config } from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { errorMiddleware } from './middlewares/error.js';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import cors from 'cors';
-import { createGoogleUser } from './controllers/user.js';
-import { saveGoogleCookie } from './utils/features.js';
+import { createGoogleUser, googleCallback } from './controllers/auth.js';
+import { backendUrl, frontendUrl } from './config/constants.js';
 
 export const app = express();
-export const backendUrl =
-  process.env.NODE_ENV === 'development'
-    ? process.env.LOCAL_BACKEND_URL
-    : process.env.BACKEND_URL;
 
-export const frontendUrl =
-  process.env.NODE_ENV === 'development'
-    ? process.env.LOCAL_FRONTEND_URL
-    : process.env.FRONTEND_URL;
-
-config({
-  path: './config/config.env',
-});
+config();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
     origin: [process.env.LOCAL_FRONTEND_URL, process.env.FRONTEND_URL],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   })
 );
@@ -60,12 +49,12 @@ app.get(
     failureRedirect: `${frontendUrl}/`,
     session: false,
   }),
-  async (req, res, next) => {
-    saveGoogleCookie(req.user, res, next, 200, 'Google Login Success');
+  async (req,res, next) => {
+    googleCallback(req.user, req, res, next);
   }
 );
 
-app.use('/api/v1/users', userRouter);
+app.use('/api/v1/auth', authRouter)
 
 
 app.get('/', (req, res) => {
