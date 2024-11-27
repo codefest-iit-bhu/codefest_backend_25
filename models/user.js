@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   name: {
@@ -16,14 +16,14 @@ const schema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'ca', 'admin'],
-    default: 'user'
+    enum: ["user", "ca", "admin"],
+    default: "user",
   },
   institute: {
-    type: String
+    type: String,
   },
   phone_num: {
-    type: String
+    type: String,
   },
   createdAt: {
     type: Date,
@@ -31,4 +31,4 @@ const schema = new mongoose.Schema({
   },
 });
 
-export const User = mongoose.model('User', schema);
+export const User = mongoose.model("User", schema);

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   eventId: {
@@ -19,4 +19,4 @@ const schema = new mongoose.Schema({
   },
 });
 
-export const Events = mongoose.model('Events', schema);
+export const Events = mongoose.model("Events", schema);

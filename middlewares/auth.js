@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
-import { User } from '../models/user.js';
+import jwt from "jsonwebtoken";
+import { User } from "../models/user.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
@@ -8,7 +8,7 @@ export const isAuthenticated = async (req, res, next) => {
     if (!token) {
       return res.status(404).json({
         success: false,
-        message: 'Login first',
+        message: "Login first",
       });
     }
 
@@ -17,7 +17,7 @@ export const isAuthenticated = async (req, res, next) => {
     if (!decoded) {
       return res.status(404).json({
         success: false,
-        message: 'Invalid Token',
+        message: "Invalid Token",
       });
     }
 

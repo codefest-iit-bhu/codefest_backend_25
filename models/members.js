@@ -1,20 +1,20 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
   team: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Team',
+    ref: "Team",
     required: true,
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   eventId: {
     type: String,
     required: true,
-    ref: 'Events',
+    ref: "Events",
   },
   createdAt: {
     type: Date,
@@ -22,4 +22,4 @@ const schema = new mongoose.Schema({
   },
 });
 
-export const Members = mongoose.model('Members', schema);
+export const Members = mongoose.model("Members", schema);

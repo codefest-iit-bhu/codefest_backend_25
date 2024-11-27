@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { Session } from '../models/session.js';
-import { Team } from '../models/team.js';
+import jwt from "jsonwebtoken";
+import { Session } from "../models/session.js";
+import { Team } from "../models/team.js";
 
 export const saveCookie = async (
   user,
@@ -12,16 +12,16 @@ export const saveCookie = async (
 ) => {
   try {
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+      expiresIn: "30m",
     });
 
     res
       .status(statusCode)
-      .cookie('token', token, {
+      .cookie("token", token, {
         httpOnly: true,
-        maxAge: 60 * 60 * 1000, // 15 minutes
-        sameSite: process.env.NODE_ENV === 'development' ? 'lax' : 'none',
-        secure: process.env.NODE_ENV === 'development' ? false : true,
+        maxAge: 30 * 60 * 1000, // 15 minutes
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        secure: process.env.NODE_ENV === "development" ? false : true,
       })
       .json({
         success: true,
@@ -37,7 +37,7 @@ export const generateRefreshToken = async (user) => {
   const refreshToken = jwt.sign(
     { _id: user._id },
     process.env.JWT_SECRET_REFRESH,
-    { expiresIn: '30d' }
+    { expiresIn: "30d" }
   );
 
   await Session.create({
@@ -50,11 +50,11 @@ export const generateRefreshToken = async (user) => {
 };
 
 export const generateRandomCode = async () => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
 
   do {
-    result = '';
+    result = "";
     for (let i = 0; i < 5; i++) {
       result += characters.charAt(
         Math.floor(Math.random() * characters.length)
