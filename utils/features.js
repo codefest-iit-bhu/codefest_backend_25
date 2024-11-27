@@ -1,9 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { Session } from '../models/session.js';
+import { Team } from '../models/team.js';
 
 export const saveCookie = async (user, res, next, statusCode, message, refreshToken) => {
   try {
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '15m',
+    });
 
     res
       .status(statusCode)
@@ -34,3 +37,19 @@ export const generateRefreshToken = async (user) => {
 
   return refreshToken
 }
+
+export const generateRandomCode = async () => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+
+  do {
+    result = '';
+    for (let i = 0; i < 5; i++) {
+      result += characters.charAt(
+        Math.floor(Math.random() * characters.length)
+      );
+    }
+  } while (await Team.findOne({ teamCode: result }));
+
+  return result;
+};

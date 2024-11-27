@@ -8,6 +8,8 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import cors from 'cors';
 import { createGoogleUser, googleCallback } from './controllers/auth.js';
 import { backendUrl, frontendUrl } from './config/constants.js';
+import teamRouter from './routes/team.js';
+import memberRouter from './routes/members.js';
 
 export const app = express();
 
@@ -49,13 +51,14 @@ app.get(
     failureRedirect: `${frontendUrl}/`,
     session: false,
   }),
-  async (req,res, next) => {
+  async (req, res, next) => {
     googleCallback(req.user, req, res, next);
   }
 );
 
-app.use('/api/v1/auth', authRouter)
-
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/team', teamRouter);
+app.use('/api/v1/member', memberRouter);
 
 app.get('/', (req, res) => {
   res.send('Server is working');
