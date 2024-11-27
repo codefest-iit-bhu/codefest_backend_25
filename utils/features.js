@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { Session } from '../models/session.js';
 
-export const saveCookie = (user, res, next, statusCode, message) => {
+export const saveCookie = async (user, res, next, statusCode, message, refreshToken) => {
   try {
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
@@ -15,21 +16,21 @@ export const saveCookie = (user, res, next, statusCode, message) => {
       .json({
         success: true,
         message: message,
+        refreshToken
       });
   } catch (error) {
     next(error);
   }
 };
 
-export const cookieRefresher = (req, res, next) => {
-  const { token } = req.cookies;
+export const generateRefreshToken = async (user) => {
+  const refreshToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_REFRESH, { expiresIn: '30d' });
 
-  res.status(200).cookie('token', token, {
-    httpOnly: true,
-    maxAge: 31 * 24 * 60 * 60 * 1000,
-    sameSite: process.env.NODE_ENV === 'development' ? 'lax' : 'none',
-    secure: process.env.NODE_ENV === 'development' ? false : true,
-  });
+  await Session.create({
+    user: user._id,
+    token: refreshToken,
+    expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+  })
 
-  next();
-};
+  return refreshToken
+}

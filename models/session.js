@@ -9,7 +9,13 @@ const schema = new mongoose.Schema({
     token: {
         type: String,
         required: true
+    },
+    expiry: {
+        type: Date,
+        required: true
     }
 });
 
-export const RefreshToken = mongoose.model('RefreshToken', schema);
+schema.index({expiry: 1}, {expireAfterSeconds: 0})
+
+export const Session = mongoose.model('Session', schema);

@@ -1,8 +1,12 @@
 import { User } from '../models/user.js';
 import bcrypt from 'bcrypt';
-import { saveCookie } from '../utils/features.js';
+import { generateRefreshToken, saveCookie } from '../utils/features.js';
 import ErrorHandler from '../middlewares/error.js';
 import { frontendUrl } from '../config/constants.js';
+import { Session } from '../models/session.js';
+import jwt from 'jsonwebtoken';
+import { generateOTP, sendVerification } from '../utils/sendVerification.js';
+import { Verification } from '../models/verification.js';
 
 export const signup = async (req, res, next) => {
   try {
@@ -13,11 +17,13 @@ export const signup = async (req, res, next) => {
       return next(new ErrorHandler('User Already Exist', 404));
     }
 
-    const hashedpswd = await bcrypt.hash(password, 5);
+    const hashedpswd = await bcrypt.hash(password, 10);
 
-    user = await User.create({ name, email, password: hashedpswd });
-
-    saveCookie(user, res, next, 201, 'User Created Successfully');
+    await sendVerification(email, generateOTP(), name, hashedpswd);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Email sent for verification'
+    })
   } catch (error) {
     next(error);
   }
@@ -74,7 +80,8 @@ export const login = async (req, res, next) => {
       return next(new ErrorHandler('Invalid Password!', 404));
     }
 
-    saveCookie(user, res, next, 200, `Welcome Back, ${user.name}`);
+    const refreshToken = await generateRefreshToken(user);
+    saveCookie(user, res, next, 200, `Welcome Back, ${user.name}`, refreshToken);
   } catch (error) {
     next(error);
   }
@@ -105,14 +112,20 @@ export const passwordSetter = async (req, res, next) => {
     user.password = hashedpswd;
     await user.save();
 
-    saveCookie(user, res, next, 201, 'User Created Successfully');
+    const refreshToken = await generateRefreshToken(user);
+    saveCookie(user, res, next, 201, 'User Created Successfully', refreshToken);
   } catch (error) {
     next(error);
   }
 };
 
-export const logout = (req, res, next) => {
+export const logout = async (req, res, next) => {
   try {
+    const refreshToken = req.headers["X-Refresh-Token"]
+    if (!refreshToken) return next(new ErrorHandler("Please provide refresh token", 404));
+
+    await Session.deleteOne({user: req.user._id, refreshToken})
+
     res
       .status(200)
       .cookie('token', '', {
@@ -128,3 +141,30 @@ export const logout = (req, res, next) => {
     next(error);
   }
 };
+
+export const refreshJwt = async (req, res, next) => {
+  const refreshToken = req.headers["X-Refresh-Token"];
+  if (!refreshToken) return next(new ErrorHandler("Please provide refresh token", 404));
+
+  const decoded = jwt.decode(refToken, process.env.JWT_SECRET);
+  if (!decoded) return next(new ErrorHandler("Invalid refresh token", 404));
+
+  const session = Session.findOne({ user: decoded._id });
+  if (!session) return next(new ErrorHandler("No session found", 404));
+
+  saveCookie(user, res, next, 200, 'Token refreshed suuccessfully', refreshToken);
+}
+
+export const verifyEmail = async (req, res, next) => {
+  const {email, otp} = req.body;
+  const verification = await Verification.findOne({email});
+  if (!verification || verification.code != otp) return next(new ErrorHandler("OTP Invalid or Expired", 404));
+  const user = await User.create({
+    name: verification.name,
+    email: verification.email,
+    password: verification.password
+  })
+  const refreshToken = await generateRefreshToken(user);
+  await Verification.deleteOne({email});
+  saveCookie(user, res, next, 201, 'User Created Successfully', refreshToken);
+}
