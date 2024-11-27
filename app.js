@@ -10,6 +10,7 @@ import { createGoogleUser, googleCallback } from './controllers/auth.js';
 import { backendUrl, frontendUrl } from './config/constants.js';
 import teamRouter from './routes/team.js';
 import memberRouter from './routes/members.js';
+import caRouter from './routes/ca.js';
 
 export const app = express();
 
@@ -59,6 +60,8 @@ app.get(
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/team', teamRouter);
 app.use('/api/v1/member', memberRouter);
+app.use('/api/v1/ca', caRouter)
+app.use('/api/v1/user', userRouter);
 
 app.get('/', (req, res) => {
   res.send('Server is working');
