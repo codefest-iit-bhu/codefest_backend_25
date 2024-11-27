@@ -2,6 +2,7 @@ import { Team } from '../models/team.js';
 import { Members } from '../models/members.js';
 import { Events } from '../models/events.js';
 import { generateRandomCode } from '../utils/features.js';
+import ErrorHandler from '../middlewares/error.js';
 
 export const createTeam = async (req, res, next) => {
   try {
@@ -9,13 +10,22 @@ export const createTeam = async (req, res, next) => {
     teamName = teamName.trim();
 
     if (await Team.findOne({ teamName, eventId })) {
-      return res.status(400).json({
-        success: false,
-        message: 'Team Already Exists',
-      });
+      return next(new ErrorHandler('Teamname Already Exists', 400));
     }
+
+    if (await Members.findOne({ user: req.user._id, eventId })) {
+      return next(new ErrorHandler('Already Registered', 400));
+    }
+
+    const event = await Events.findOne({ eventId });
+    const currentDate = new Date();
+    const eventDeadline = new Date(event.eventDeadline);
+    if (currentDate > eventDeadline) {
+      return next(new ErrorHandler('Event Deadline Passed', 400));
+    }
+
     const teamCode = await generateRandomCode();
-    await Team.create({
+    const team = await Team.create({
       teamName,
       teamCode,
       eventId,
@@ -23,8 +33,8 @@ export const createTeam = async (req, res, next) => {
     });
 
     await Members.create({
-      teamCode,
-      userId: req.user._id,
+      team: team._id,
+      user: req.user._id,
       eventId,
     });
 
@@ -38,28 +48,59 @@ export const createTeam = async (req, res, next) => {
   }
 };
 
-export const isRegistered = async (req, res, next) => {
-  const { eventId } = req.params;
-
+export const deleteTeam = async (req, res, next) => {
   try {
-    const member = await Members.findOne({ userId: req.user._id, eventId });
-    await Events.create({
-      eventId: '1',
-      maxMembers: 4,
-    });
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: 'Team Not Found',
-      });
+    const { teamCode } = req.body;
+    const team = await Team.findOne({ teamCode });
+
+    if (!team) {
+      return next(new ErrorHandler('Team Not Found', 404));
     }
+
+    await Team.deleteOne({ teamCode });
+    await Members.deleteMany({ team: team._id });
     res.status(200).json({
       success: true,
-      userId: member.userId,
-      teamCode: member.teamCode,
-      event: member.eventId,
+      message: 'Team Deleted Successfully',
     });
   } catch (error) {
     next(error);
   }
+};
+
+export const changeLeader = async (req, res, next) => {
+  try {
+    const { teamCode, newLeader } = req.body;
+    const team = await Team.findOne({ teamCode });
+
+    if (!team) {
+      return next(new ErrorHandler('Team Not Found', 404));
+    }
+
+    if (team.teamLeader.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler('Access Denied', 403));
+    }
+
+    const member = await Members.findOne({
+      user: newLeader,
+      team: team._id,
+    });
+    if (!member) {
+      return next(new ErrorHandler('Member Not Found', 404));
+    }
+
+    team.teamLeader = newLeader;
+    await team.save();
+    res.status(200).json({
+      success: true,
+      message: 'Leader Changed Successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTeams = async (req, res, next) => {
+  const teams = await Members.find({ user: req.user._id }).populate('team');
+  res.status(200).json(teams);
 };

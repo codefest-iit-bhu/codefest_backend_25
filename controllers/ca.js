@@ -2,7 +2,7 @@ import ErrorHandler from '../middlewares/error.js';
 import { CARequest } from '../models/ca_request.js';
 
 export const register = async (req, res, next) => {
-  const request = CARequest.find({ user: req.user._id });
+  const request = await CARequest.findOne({ user: req.user._id });
   if (request) return next(new ErrorHandler('CA Request already exists', 404));
   const { institute, userDescription } = req.body;
   await CARequest.create({
@@ -30,8 +30,8 @@ export const getAllRequests = async (req, res, next) => {
   res.status(200).json(requests);
 };
 
-export const updateRequest = async (req, res) => {
-  let request = await CARequest.find({ _id: req.params.id });
+export const updateRequest = async (req, res, next) => {
+  let request = await CARequest.findOne({ _id: req.params.id });
   if (!request) return next(new ErrorHandler('CA request not found', 404));
   if (req.body.status) request.status = req.body.status;
   if (req.user.role !== 'admin') {

@@ -1,11 +1,12 @@
 import mongoose from 'mongoose';
 
 const schema = new mongoose.Schema({
-  teamCode: {
+  team: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
     required: true,
-    type: String,
   },
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
@@ -13,6 +14,7 @@ const schema = new mongoose.Schema({
   eventId: {
     type: String,
     required: true,
+    ref: 'Events',
   },
   createdAt: {
     type: Date,

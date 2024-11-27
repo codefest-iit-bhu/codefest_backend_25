@@ -9,10 +9,8 @@ import {
 
 const router = express.Router();
 
-router
-  .route('/')
-  .post(isAuthenticated, register)
-  .patch(isAuthenticated, updateRequest);
+router.post('/', isAuthenticated, register);
+router.patch('/update/:id', isAuthenticated, updateRequest);
 router.get('/my', isAuthenticated, getMyRequest);
 router.get('/all', isAuthenticated, getAllRequests);
 

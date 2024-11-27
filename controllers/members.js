@@ -1,29 +1,124 @@
 import { Events } from '../models/events.js';
 import { Members } from '../models/members.js';
+import ErrorHandler from '../middlewares/error.js';
+import { Team } from '../models/team.js';
 
 export const joinTeam = async (req, res, next) => {
   try {
     const { teamCode } = req.body;
-    const members = await Members.find({ teamCode });
+    const team = await Team.findOne({ teamCode });
+    const members = await Members.find({ team: team._id });
 
-    if (!members) {
+    if (!team) {
       return next(new ErrorHandler('Invalid Team Code', 404));
     }
 
-    const eventId = members[0].eventId;
+    const eventId = team.eventId;
     const event = await Events.findOne({ eventId });
     const maxMembers = event.maxMembers;
+    const currentDate = new Date();
+    const eventDeadline = new Date(event.eventDeadline);
 
-    if (members.length == maxMembers) {
+    if (currentDate > eventDeadline) {
+      return next(new ErrorHandler('Event Deadline Passed', 400));
+    }
+    if (members.length >= maxMembers) {
       return next(new ErrorHandler('Team is Full', 400));
     }
 
-    await Members.create({
-      teamCode,
-      userId: req.user._id,
+    const checkMember = await Members.findOne({
+      user: req.user._id,
       eventId,
+    });
+    if (checkMember) {
+      return next(new ErrorHandler('Already Registered', 400));
+    }
+
+    await Members.create({
+      team: team._id,
+      user: req.user._id,
+      eventId,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Joined Team Successfully',
     });
   } catch (error) {
     next(error);
   }
 };
+
+export const getMembers = async (req, res, next) => {
+  try {
+    const { teamId } = req.body;
+
+    const members = await Members.find({ team: teamId }).populate('user');
+    if (members.length === 0) {
+      return next(new ErrorHandler('Team Not Found', 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      members,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMember = async (req, res, next) => {
+  try {
+    const { userId, teamId } = req.body;
+    const member = await Members.findOne({
+      user: userId,
+      team: teamId,
+    }).populate({ path: 'team', select: 'teamLeader' });
+
+    const teamLeader = member.team.teamLeader.toString();
+    if (!member) {
+      return next(new ErrorHandler('Member Not Found', 404));
+    }
+    if (userId === teamLeader) {
+      return next(new ErrorHandler('Team Leader Cannot be Deleted', 400));
+    }
+    if (
+      req.user._id.toString() !== teamLeader &&
+      req.user._id.toString() !== userId
+    ) {
+      return next(new ErrorHandler('Unauthorized to delete the user', 401));
+    }
+    await Members.deleteOne({ user: userId, team: teamId });
+    res
+      .status(200)
+      .json({ status: 'success', message: 'Member Deleted Successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// export const isRegistered = async (req, res, next) => {
+//   const { eventId } = req.params;
+
+//   try {
+//     const member = await Members.findOne({ user: req.user._id, eventId });
+//     await Events.create({
+//       eventId: '1',
+//       maxMembers: 4,
+//     });
+//     if (!member) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Team Not Found',
+//       });
+//     }
+//     res.status(200).json({
+//       success: true,
+//       user: member.user,
+//       teamCode: member.teamCode,
+//       event: member.eventId,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };

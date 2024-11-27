@@ -18,6 +18,7 @@ const schema = new mongoose.Schema({
   eventId: {
     type: String,
     required: true,
+    ref: 'Events',
   },
   createdAt: {
     type: Date,
