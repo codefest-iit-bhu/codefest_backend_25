@@ -9,6 +9,10 @@ const schema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  eventDeadline: {
+    type: Date,
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -11,6 +11,8 @@ import { backendUrl, frontendUrl } from './config/constants.js';
 import teamRouter from './routes/team.js';
 import memberRouter from './routes/members.js';
 import caRouter from './routes/ca.js';
+import eventRouter from './routes/events.js';
+import userRouter from './routes/user.js';
 
 export const app = express();
 
@@ -60,8 +62,9 @@ app.get(
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/team', teamRouter);
 app.use('/api/v1/member', memberRouter);
-app.use('/api/v1/ca', caRouter)
+app.use('/api/v1/ca', caRouter);
 app.use('/api/v1/user', userRouter);
+app.use('/api/v1/event', eventRouter);
 
 app.get('/', (req, res) => {
   res.send('Server is working');
