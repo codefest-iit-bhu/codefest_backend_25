@@ -14,4 +14,4 @@ export const frontendUrl =
 export const mongoUri =
   process.env.NODE_ENV === "development"
     ? process.env.LOCAL_MONGO_URI
-    : process.env.MONGO_URL;
+    : process.env.MONGO_URI;

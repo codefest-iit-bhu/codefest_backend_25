@@ -7,5 +7,5 @@ export const connectDB = () => {
     .then((c) => {
       console.log(`Database connected with ${c.connection.host}`);
     })
-    .catch((err) => console.log("Error connecting"));
+    .catch((err) => console.log(err));
 };
