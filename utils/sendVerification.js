@@ -74,13 +74,17 @@ export const sendVerification = async (to, otp, name, password) => {
 			console.error("Error sending email:", error);
 			throw new Error("Error sending email:", error);
 		}
-		await Verification.create({
-			name,
-			email: to,
-			code: otp,
-			password,
-			expiry: new Date(Date.now() + 60 * 60 * 1000), // 1 hour expiry time
-		});
-		console.log("Email sent:", info.response);
+		await Verification.findOneAndUpdate(
+			{ email: to },
+			{
+				name,
+				email: to,
+				code: otp,
+				password,
+				expiry: new Date(Date.now() + 60 * 60 * 1000),
+			},
+			{ upsert: true }
+		);
+
 	});
 };
