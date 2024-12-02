@@ -7,6 +7,7 @@ export const joinTeam = async (req, res, next) => {
   try {
     const { teamCode } = req.body;
     const team = await Team.findOne({ teamCode });
+    if (!team) return next(new ErrorHandler("Team not found", 404))
     const members = await Members.find({ team: team._id });
 
     if (!team) {
@@ -51,7 +52,7 @@ export const joinTeam = async (req, res, next) => {
 
 export const getMembers = async (req, res, next) => {
   try {
-    const { teamId } = req.body;
+    const { teamId } = req.params;
 
     const members = await Members.find({ team: teamId }).populate("user");
     if (members.length === 0) {

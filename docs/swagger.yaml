@@ -1,0 +1,1243 @@
+openapi: 3.0.0
+info:
+  title: Codefest'25 API Documentation
+  version: 1.0.0
+  description: This is the API documentation for Codefest'25 IIT (BHU) Varanasi.
+servers:
+  - url: ${SERVER_URL}/api/v1
+
+tags:
+  - name: Auth
+    description: Endpoints related to Auth of the user
+  - name: User
+    description: Endpoints related to Auth of the user
+  - name: Campus Ambassador
+    description: Endpoints related to the Campus Ambassador registration
+  - name: Members
+    description: Endpoints related to the team members
+  - name: Events
+    description: Endpoints related to the events
+  - name: Teams
+    description: Endpoints related to the teams
+
+paths:
+  /auth/signup:
+    post:
+      tags:
+        - Auth
+      summary: User signup
+      description: Create a new user account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  description: The name of the user
+                  example: John Doe
+                email:
+                  type: string
+                  description: The email of the user
+                  example: johndoe@example.com
+                password:
+                  type: string
+                  description: The password of the user (Minimum 8 characters length)
+                  example: password123
+      responses:
+        201:
+          description: User signed up successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success (or failure)
+                  message:
+                    type: string
+                    example: Email sent for verification.
+        400:
+          description: Password is less than 8 characters or user already exsists.
+
+  /auth/verify_email:
+    post:
+      tags:
+        - Auth
+      summary: Email verification
+      description: Verify email through otp sent to the email provided during signup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - otp
+              properties:
+                email:
+                  type: string
+                  description: The email to be verified
+                  example: johndoe@example.com
+                otp:
+                  type: string
+                  description: The otp sent to the email
+                  example: "877792"
+      responses:
+        201:
+          description: User's email verified successfully
+          headers:
+            Set-Cookie:
+              description: The cookie containing jwt information
+              schema:
+                type: string
+                example: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.WDlNbJFe8ZX6C1mS27xwxg-9tk8vtkk6sDgucRj8xW0; HttpOnly; Max-Age=1800; SameSite=none; Secure=true;
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success (or failure)
+                  message:
+                    type: string
+                    example: User Created Successfully
+                  refreshToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.WDlNbJFe8ZX6C1mS27xwxg-9tk8vtkk6sDgucRj8xW0"
+        400:
+          description: OTP invalid or expired.
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User Login
+      description: Manual Login into Codefest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  description: The email to be verified
+                  example: johndoe@example.com
+                password:
+                  type: string
+                  description: The password of the user
+                  example: password123
+      responses:
+        200:
+          description: User logged in successfully
+          headers:
+            Set-Cookie:
+              description: The cookie containing jwt information
+              schema:
+                type: string
+                example: token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.WDlNbJFe8ZX6C1mS27xwxg-9tk8vtkk6sDgucRj8xW0; HttpOnly; Max-Age=1800; SameSite=none; Secure=true;
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success (or failure)
+                  message:
+                    type: string
+                    example: Welcome back, John Doe
+                  refreshToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.WDlNbJFe8ZX6C1mS27xwxg-9tk8vtkk6sDgucRj8xW0"
+        400:
+          description: Invalid email or password
+
+  /auth/logout:
+    get:
+      tags:
+        - Auth
+      summary: Logout the user and clear the authentication cookies.
+      description: Logs out the authenticated user by deleting the refresh token from the session and clearing the JWT cookie.
+      parameters:
+        - name: X-Refresh-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The refresh token associated with the user's session.
+      responses:
+        "200":
+          description: Successfully logged out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the logout operation was successful.
+                    example: true
+                  message:
+                    type: string
+                    description: Message confirming logout.
+                    example: "Logged Out Successfully"
+        "400":
+          description: Refresh token not provided.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the failure of the operation.
+                    example: false
+                  message:
+                    type: string
+                    description: Error message describing the failure.
+                    example: "Please provide refresh token"
+
+  /auth/refresh-token:
+    get:
+      tags:
+        - Auth
+      summary: Refresh the JWT token for a user session.
+      description: Validates the provided refresh token, checks for an active session, and issues a refreshed JWT token in the response.
+      parameters:
+        - name: X-Refresh-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The refresh token used to validate and refresh the user's session.
+      responses:
+        "200":
+          description: Successfully refreshed the JWT token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the operation was successful.
+                    example: true
+                  message:
+                    type: string
+                    description: Message confirming token refresh.
+                    example: "Token refreshed successfully"
+        "404":
+          description: Refresh token error or session not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates the failure of the operation.
+                    example: false
+                  message:
+                    type: string
+                    description: Error message describing the failure.
+                    example: "Please provide refresh token"
+
+  /Oauth2/google:
+    get:
+      tags:
+        - Auth
+      summary: Redirects the user to Google OAuth2 authorization.
+      description: |
+        This endpoint initiates the Google OAuth2 flow by redirecting the user to Google's OAuth2 authorization page.
+
+        **Frontend Behavior:**  
+        Instead of making a traditional API call, the frontend should use:
+        ```javascript
+        window.location.href = '${SERVER_URL}/api/v1/Oauth2/google';
+        ```
+      responses:
+        "302":
+          description: Redirects the user to Google authorization URL.
+
+  /user/all:
+    get:
+      tags:
+        - User
+      summary: Retrieve all users.
+      description: Allows an admin to retrieve the details of all users.
+      responses:
+        "200":
+          description: Successfully retrieved all users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                      description: The unique identifier of the user.
+                      example: "1234567890abcdef"
+                    name:
+                      type: string
+                      description: The name of the user.
+                      example: "John Doe"
+                    email:
+                      type: string
+                      description: The email of the user.
+                      example: "john.doe@example.com"
+                    role:
+                      type: string
+                      description: The role of the user (user/ca/admin).
+                      example: "admin"
+                    institute:
+                      type: string
+                      description: The institute the user is associated with.
+                      example: "IIT BHU"
+                    phone_num:
+                      type: string
+                      description: The user's phone number.
+                      example: "9876543210"
+        "403":
+          description: Unauthorized access for non-admin users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "You are not allowed to access users"
+
+  /user/{id}:
+    patch:
+      tags:
+        - User
+      summary: Update user details.
+      description: Allows a user (or an admin) to update their details.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  description: The role to assign (user/ca/admin).
+                  example: "ca"
+                institute:
+                  type: string
+                  description: The institute to assign.
+                  example: "IIT BHU"
+                phone_num:
+                  type: string
+                  description: The user's phone number.
+                  example: "9876543210"
+      responses:
+        "200":
+          description: Successfully updated user details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    description: The unique identifier of the user.
+                    example: "1234567890abcdef"
+                  name:
+                    type: string
+                    description: The name of the user.
+                    example: "John Doe"
+                  email:
+                    type: string
+                    description: The email of the user.
+                    example: "john.doe@example.com"
+                  role:
+                    type: string
+                    description: The role of the user (user/ca/admin).
+                    example: "ca"
+                  institute:
+                    type: string
+                    description: The institute the user is associated with.
+                    example: "IIT BHU"
+                  phone_num:
+                    type: string
+                    description: The user's phone number.
+                    example: "9876543210"
+        "403":
+          description: Unauthorized access for non-admin users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "You are not allowed to change another user's details"
+        "400":
+          description: Bad request due to invalid role or phone number.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Phone number must be exactly 10 characters"
+
+    delete:
+      tags:
+        - User
+      summary: Delete a user account.
+      description: Allows a user (or an admin) to delete their account.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the user
+      responses:
+        "200":
+          description: Successfully deleted user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+        "403":
+          description: Unauthorized access for non-admin users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "You are not allowed to delete another user"
+
+  /user/me:
+    get:
+      tags:
+        - User
+      summary: Get the profile of the authenticated user.
+      description: Retrieve the profile details of the logged-in user.
+      responses:
+        "200":
+          description: Successfully retrieved user profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    description: The unique identifier of the user.
+                    example: "1234567890abcdef"
+                  name:
+                    type: string
+                    description: The name of the user.
+                    example: "John Doe"
+                  email:
+                    type: string
+                    description: The email of the user.
+                    example: "john.doe@example.com"
+                  role:
+                    type: string
+                    description: The role of the user (user/ca/admin).
+                    example: "user"
+                  institute:
+                    type: string
+                    description: The institute the user is associated with.
+                    example: "IIT BHU"
+                  phone_num:
+                    type: string
+                    description: The user's phone number.
+                    example: "9876543210"
+
+  /auth/set-password:
+    post:
+      tags:
+        - Auth
+      summary: Set a new password for the user.
+      description: Allows a user to set a new password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: Email of the user.
+                  example: "johndoe@example.com"
+                password:
+                  type: string
+                  description: The new password to set.
+                  example: "newStrongPassword123"
+      responses:
+        "200":
+          description: Successfully set the password.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Password set successfully"
+
+  /ca:
+    post:
+      tags:
+        - Campus Ambassador
+      summary: Submit a new Campus Ambassador (CA) request.
+      description: Allows a user to register a new CA request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                institute:
+                  type: string
+                  description: The name of the user's institute.
+                  example: "IIT BHU"
+                userDescription:
+                  type: string
+                  description: A brief description provided by the user.
+                  example: "Passionate about promoting tech initiatives."
+      responses:
+        "201":
+          description: CA request successfully submitted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "CA request sent successfully"
+        "400":
+          description: User already has a CA request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "CA Request already exists"
+
+  /ca/my:
+    get:
+      tags:
+        - Campus Ambassador
+      summary: Retrieve the authenticated user's CA request.
+      description: Fetches the details of the logged-in user's CA request.
+      responses:
+        "200":
+          description: Successfully retrieved the CA request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: string
+                    description: User ID associated with the CA request.
+                    example: "12345678abcde"
+                  institute:
+                    type: string
+                    description: User's institute.
+                    example: "IIT BHU"
+                  userDescription:
+                    type: string
+                    description: Description provided by the user.
+                    example: "Passionate about promoting tech initiatives."
+        "404":
+          description: CA request not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "CA request not found"
+
+  /ca/all:
+    get:
+      tags:
+        - Campus Ambassador
+      summary: Retrieve all CA requests.
+      description: Allows admin users to view all CA requests.
+      responses:
+        "200":
+          description: Successfully retrieved all CA requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    user:
+                      type: string
+                      description: User ID associated with the CA request.
+                      example: "12345678abcde"
+                    institute:
+                      type: string
+                      description: User's institute.
+                      example: "IIT BHU"
+                    userDescription:
+                      type: string
+                      description: Description provided by the user.
+                      example: "Passionate about promoting tech initiatives."
+                    status:
+                      type: string
+                      description: Current status of the request.
+                      example: "Pending"
+        "403":
+          description: Unauthorized access for non-admin users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "You are not allowed to see the CA requests"
+
+  /ca/{id}:
+    patch:
+      tags:
+        - Campus Ambassador
+      summary: Update a specific CA request.
+      description: Allows updating of CA request details. Admins can update the `adminMessage`; users can update their own details.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the CA request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: The status of the request (e.g., pending, approved).
+                  example: "approved"
+                institute:
+                  type: string
+                  description: The updated institute name (if user is not admin).
+                  example: "IIT BHU"
+                userDescription:
+                  type: string
+                  description: Updated user description (if user is not admin).
+                  example: "Updated description"
+                adminMessage:
+                  type: string
+                  description: Message from admin (if user is admin).
+                  example: "Approved with conditions."
+      responses:
+        "200":
+          description: Successfully updated the CA request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: string
+                    description: User ID associated with the CA request.
+                    example: "12345678abcde"
+                  institute:
+                    type: string
+                    description: User's updated institute.
+                    example: "IIT BHU"
+                  userDescription:
+                    type: string
+                    description: User's updated description.
+                    example: "Updated description"
+                  adminMessage:
+                    type: string
+                    description: Admin's message for the request.
+                    example: "Approved with conditions."
+        "404":
+          description: CA request not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "CA request not found"
+
+  /event:
+    post:
+      tags:
+        - Events
+      summary: Add a new event.
+      description: Allows an admin to add a new event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventId:
+                  type: string
+                  description: The unique identifier for the event.
+                  example: "EVENT12345"
+                maxMembers:
+                  type: integer
+                  description: The maximum number of members allowed in the event.
+                  example: 100
+                eventDeadline:
+                  type: string
+                  description: The deadline for the event in format DD-MM-YYYY
+                  example: "15-02-2025"
+      responses:
+        "201":
+          description: Event successfully created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  event:
+                    type: object
+                    properties:
+                      eventId:
+                        type: string
+                        example: "EVENT12345"
+                      maxMembers:
+                        type: integer
+                        example: 100
+                      eventDeadline:
+                        type: string
+                        example: "15-02-2025"
+        "403":
+          description: Only admin users can add events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Only admin can access"
+        "400":
+          description: Bad request, the event already exists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Event already exists"
+
+  /member/join:
+    post:
+      tags:
+        - Members
+      summary: Join a team.
+      description: Allows a user to join a team if the team is not full and the event deadline has not passed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamCode:
+                  type: string
+                  description: The unique code for the team to join.
+                  example: "TEAM12345"
+      responses:
+        "201":
+          description: Successfully joined the team.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Joined Team Successfully"
+        "404":
+          description: Invalid team code or team does not exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Invalid Team Code"
+        "400":
+          description: Event deadline passed or team is full or already registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Event Deadline Passed" # or "Team is Full" or "Already Registered"
+
+  /member/getMembers/{teamId}:
+    get:
+      tags:
+        - Members
+      summary: Get all members of a team.
+      description: Fetches all the members of a team.
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the team to get members for.
+          example: "67487a16f0680976e5d1fbdf"
+      responses:
+        "200":
+          description: Successfully fetched team members.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "user123"
+                        name:
+                          type: string
+                          example: "John Doe"
+                        email:
+                          type: string
+                          example: "johndoe@example.com"
+        "404":
+          description: Team not found or no members in the team.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Team Not Found"
+
+  /member:
+    delete:
+      tags:
+        - Members
+      summary: Delete a member from a team.
+      description: Allows the deletion of a team member by the team leader or the user themselves.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: The ID of the user to delete from the team.
+                  example: "67487a16f0680976e5d1fbdf"
+                teamId:
+                  type: string
+                  description: The ID of the team from which the member should be deleted.
+                  example: "67487a16f0680976e5d1fbdf"
+      responses:
+        "200":
+          description: Successfully deleted the member from the team.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member Deleted Successfully"
+        "404":
+          description: Member not found or unauthorized to delete the member.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Member Not Found"
+        "400":
+          description: Team leader cannot be deleted or other error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Team Leader Cannot be Deleted"
+        "401":
+          description: Unauthorized to delete the member.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Unauthorized to delete the user"
+
+  /team/create:
+    post:
+      tags:
+        - Teams
+      summary: Create a new team.
+      description: Creates a new team for the specified event if the user is not already registered and the event deadline has not passed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamName:
+                  type: string
+                  description: The name of the team to be created.
+                  example: "Alpha Team"
+                eventId:
+                  type: string
+                  description: The ID of the event the team is participating in.
+                  example: "event123"
+      responses:
+        "201":
+          description: Team created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Team Created Successfully"
+                  teamCode:
+                    type: string
+                    example: "ABC123"
+        "400":
+          description: Team already exists or already registered for the event, or event deadline passed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Teamname Already Exists" # or "Already Registered" or "Event Deadline Passed"
+        "404":
+          description: Event not found or invalid event ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Event Not Found"
+
+  /team:
+    delete:
+      tags:
+        - Teams
+      summary: Delete a team.
+      description: Deletes the specified team along with its members.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamCode:
+                  type: string
+                  description: The code of the team to be deleted.
+                  example: "ABC123"
+      responses:
+        "200":
+          description: Team deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Team Deleted Successfully"
+        "404":
+          description: Team not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Team Not Found"
+
+  /team/changeLeader:
+    post:
+      tags:
+        - Teams
+      summary: Change the team leader.
+      description: Allows the current team leader to change the leader of the team.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamCode:
+                  type: string
+                  description: The code of the team where the leader is to be changed.
+                  example: "ABC123"
+                newLeader:
+                  type: string
+                  description: The ID of the user to be set as the new team leader.
+                  example: "67487a16f0680976e5d1fbdf"
+      responses:
+        "200":
+          description: Leader changed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Leader Changed Successfully"
+        "403":
+          description: Access denied, only the current leader can change the leader.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Access Denied"
+        "404":
+          description: Team or new leader not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Team Not Found" # or "Member Not Found"
+
+  /team/myTeams:
+    get:
+      tags:
+        - Teams
+      summary: Get all teams the user is part of.
+      description: Retrieves all the teams the currently authenticated user is a member of.
+      responses:
+        "200":
+          description: Successfully retrieved teams.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  teams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        teamName:
+                          type: string
+                          example: "Alpha Team"
+                        teamCode:
+                          type: string
+                          example: "ABC123"
+                        eventId:
+                          type: string
+                          example: "event123"
+        "404":
+          description: No teams found for the user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No teams found"
+
+  /team/name_available:
+    post:
+      tags:
+        - Teams
+      summary: Check if the team name is available.
+      description: Checks if a team name is available for creation or if it already exists for a given event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of team to check
+                  example: "Alpha Team"
+      responses:
+        "200":
+          description: Successfully checked team name availability.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, failure]
+                    example: "success"

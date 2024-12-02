@@ -2,26 +2,26 @@ import nodemailer from "nodemailer";
 import { Verification } from "../models/verification.js";
 
 export function generateOTP() {
-  const otp = Math.floor(100000 + Math.random() * 900000);
-  return otp;
+	const otp = Math.floor(100000 + Math.random() * 900000);
+	return otp;
 }
 
 export const sendVerification = async (to, otp, name, password) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: "kolanuvarun739@gmail.com",
-      pass: process.env.SMTP_APP_PASS,
-    },
-  });
+	const transporter = nodemailer.createTransport({
+		service: "gmail",
+		auth: {
+			user: "kolanuvarun739@gmail.com",
+			pass: process.env.SMTP_APP_PASS,
+		},
+	});
 
-  const image_url = "https://iili.io/2cwlabs.png";
-  const from = "kolanuvarun739@gmail.com";
-  const mailOptions = {
-    from,
-    to,
-    subject: "Email Verification - Codefest'25",
-    html: `
+	const image_url = "https://iili.io/2cwlabs.png";
+	const from = "kolanuvarun739@gmail.com";
+	const mailOptions = {
+		from,
+		to,
+		subject: "Email Verification - Codefest'25",
+		html: `
         <html lang="en">
 
 		<body>
@@ -67,20 +67,20 @@ export const sendVerification = async (to, otp, name, password) => {
 
 		</html>
         `,
-  };
+	};
 
-  await transporter.sendMail(mailOptions, async (error, info) => {
-    if (error) {
-      console.error("Error sending email:", error);
-      throw new Error("Error sending email:", error);
-    }
-    await Verification.create({
-      name,
-      email: to,
-      code: otp,
-      password,
-      expiry: new Date(Date.now() + 60 * 60 * 1000), // 1 hour expiry time
-    });
-    console.log("Email sent:", info.response);
-  });
+	await transporter.sendMail(mailOptions, async (error, info) => {
+		if (error) {
+			console.error("Error sending email:", error);
+			throw new Error("Error sending email:", error);
+		}
+		await Verification.create({
+			name,
+			email: to,
+			code: otp,
+			password,
+			expiry: new Date(Date.now() + 60 * 60 * 1000), // 1 hour expiry time
+		});
+		console.log("Email sent:", info.response);
+	});
 };

@@ -1,5 +1,6 @@
 import { Events } from "../models/events.js";
 import ErrorHandler from "../middlewares/error.js";
+import { convertToDate } from "../utils/features.js";
 
 export const addEvent = async (req, res, next) => {
   try {
@@ -7,11 +8,14 @@ export const addEvent = async (req, res, next) => {
       return next(new ErrorHandler("Only admin can access", 403));
     }
 
-    const { eventId, maxMembers, eventDeadline } = req.body;
+    // eventDeadline in the format DD-MM-YYYY
+    let { eventId, maxMembers, eventDeadline } = req.body;
 
     if (await Events.findOne({ eventId })) {
       return next(new ErrorHandler("Event already exists", 400));
     }
+
+    eventDeadline = convertToDate(eventDeadline);
 
     const event = await Events.create({
       eventId,

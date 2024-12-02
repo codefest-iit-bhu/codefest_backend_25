@@ -3,7 +3,7 @@ import { User } from "../models/user.js";
 
 export const getAllUsers = async (req, res, next) => {
   try {
-    if (request.user.role !== "admin")
+    if (req.user.role !== "admin")
       return next(new ErrorHandler("You are not allowed to access users", 403));
 
     const users = await User.find();
@@ -26,19 +26,21 @@ export const updateUser = async (req, res, next) => {
     const { role, institute, phone_num } = req.body;
     if (role && role !== "user" && role !== "ca" && role !== "admin")
       return next(new ErrorHandler("Invalid role", 400));
-    req.user.role = role;
+
+    let user = await User.findById(id);
+    user.role = role;
     if (role !== "admin") {
-      if (institute) req.user.institute = institute;
+      if (institute) user.institute = institute;
       if (phone_num) {
         if (phone_num.length !== 10)
           return next(
             new ErrorHandler("Phone number must be exactly 10 characters")
           );
-        req.user.phone_num = phone_num;
+        user.phone_num = phone_num;
       }
     }
-    await req.user.save();
-    return res.status(200).json(req.user);
+    await user.save();
+    return res.status(200).json(user);
   } catch (error) {
     next(error);
   }

@@ -86,7 +86,7 @@ export const changeLeader = async (req, res, next) => {
       team: team._id,
     });
     if (!member) {
-      return next(new ErrorHandler("Member Not Found", 404));
+      return next(new ErrorHandler("Member Not Found in the team", 404));
     }
 
     team.teamLeader = newLeader;
@@ -102,10 +102,56 @@ export const changeLeader = async (req, res, next) => {
 
 export const getTeams = async (req, res, next) => {
   try {
-    const teams = await Members.find({ user: req.user._id }).populate(
-      "team",
-      "user"
-    );
+    const teams = await Team.aggregate([
+      {
+        $lookup: {
+          from: "members",
+          localField: "_id",
+          foreignField: "team",
+          as: "members",
+        },
+      },
+      {
+        $match: {
+          "members.user": req.user._id,
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "members.user",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $addFields: {
+          members: {
+            $map: {
+              input: "$members",
+              as: "member",
+              in: {
+                $mergeObjects: [
+                  "$$member",
+                  {
+                    user: {
+                      $arrayElemAt: [
+                        "$userDetails",
+                        { $indexOfArray: ["$userDetails._id", "$$member.user"] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      {
+        $unset: "userDetails",
+      },
+    ]);
+
     res.status(200).json(teams);
   } catch (error) {
     next(error);
@@ -115,7 +161,8 @@ export const getTeams = async (req, res, next) => {
 export const nameAvailable = async (req, res, next) => {
   try {
     const { name } = req.body;
-    if (await Team.findOne({ name: name }))
+    const team = await Team.findOne({ teamName: name })
+    if (team)
       return res.status(200).json({ status: "failure" });
     else return res.status(200).json({ status: "success" });
   } catch (error) {

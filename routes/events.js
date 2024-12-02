@@ -4,6 +4,6 @@ import { addEvent } from "../controllers/events.js";
 
 const router = express.Router();
 
-router.post("/add", isAuthenticated, addEvent);
+router.post("/", isAuthenticated, addEvent);
 
 export default router;

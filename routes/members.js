@@ -5,7 +5,7 @@ import { isAuthenticated } from "../middlewares/auth.js";
 const router = express.Router();
 
 router.post("/join", isAuthenticated, joinTeam);
-router.get("/getMembers", isAuthenticated, getMembers);
+router.get("/getMembers/:teamId", isAuthenticated, getMembers);
 router.delete("/", isAuthenticated, deleteMember);
 
 export default router;

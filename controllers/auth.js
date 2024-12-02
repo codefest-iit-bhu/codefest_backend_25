@@ -31,7 +31,7 @@ export const signup = async (req, res, next) => {
 
     let user = await User.findOne({ email });
     if (user) {
-      return next(new ErrorHandler("User Already Exist", 404));
+      return next(new ErrorHandler("User Already Exist", 400));
     }
 
     const hashedpswd = await bcrypt.hash(password, 10);
@@ -71,7 +71,18 @@ export const googleCallback = async (user, req, res, next) => {
 
     if (!googleUser.password)
       res.redirect(`${frontendUrl}/setPassword?email=${email}`);
-    else res.redirect(`${frontendUrl}/main?email=${email}`);
+    else {
+      const refreshToken = await generateRefreshToken(googleUser);
+      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "30m",
+      });
+      res.cookie("token", token, {
+        httpOnly: true,
+        maxAge: 30 * 60 * 1000, // 30 minutes
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        secure: process.env.NODE_ENV === "development" ? false : true,
+      }).redirect(`${frontendUrl}/main?refreshToken=${refreshToken}`);
+    }
   } catch (error) {
     next(error);
   }
@@ -84,12 +95,12 @@ export const login = async (req, res, next) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return next(new ErrorHandler("Invalid Email!", 404));
+      return next(new ErrorHandler("Invalid Email!", 400));
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return next(new ErrorHandler("Invalid Password!", 404));
+      return next(new ErrorHandler("Invalid Password!", 400));
     }
 
     const refreshToken = await generateRefreshToken(user);
@@ -107,15 +118,19 @@ export const login = async (req, res, next) => {
 };
 
 export const profile = (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: req.user,
-  });
+  res.status(200).json(req.user);
 };
 
 export const passwordSetter = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
+    if (!validator.isLength(password, { min: 8 })) {
+      return next(
+        new ErrorHandler("Password must be minimum 8 characters", 400)
+      );
+    }
+
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
@@ -140,9 +155,9 @@ export const passwordSetter = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    const refreshToken = req.headers["X-Refresh-Token"];
+    const refreshToken = req.headers["x-refresh-token"];
     if (!refreshToken)
-      return next(new ErrorHandler("Please provide refresh token", 404));
+      return next(new ErrorHandler("Please provide refresh token", 400));
 
     await Session.deleteOne({ user: req.user._id, refreshToken });
 
@@ -164,18 +179,18 @@ export const logout = async (req, res, next) => {
 
 export const refreshJwt = async (req, res, next) => {
   try {
-    const refreshToken = req.headers["X-Refresh-Token"];
+    const refreshToken = req.headers["x-refresh-token"];
     if (!refreshToken)
       return next(new ErrorHandler("Please provide refresh token", 404));
 
-    const decoded = jwt.decode(refToken, process.env.JWT_SECRET);
+    const decoded = jwt.decode(refreshToken, process.env.JWT_SECRET);
     if (!decoded) return next(new ErrorHandler("Invalid refresh token", 404));
 
     const session = Session.findOne({ user: decoded._id });
     if (!session) return next(new ErrorHandler("No session found", 404));
 
     saveCookie(
-      user,
+      { "_id": session.user },
       res,
       next,
       200,
@@ -192,7 +207,7 @@ export const verifyEmail = async (req, res, next) => {
     const { email, otp } = req.body;
     const verification = await Verification.findOne({ email });
     if (!verification || verification.code != otp)
-      return next(new ErrorHandler("OTP Invalid or Expired", 404));
+      return next(new ErrorHandler("OTP Invalid or Expired", 400));
     const user = await User.create({
       name: verification.name,
       email: verification.email,

@@ -13,6 +13,8 @@ import memberRouter from "./routes/members.js";
 import caRouter from "./routes/ca.js";
 import eventRouter from "./routes/events.js";
 import userRouter from "./routes/user.js";
+import swaggerUi from "swagger-ui-express";
+import { loadSwaggerWithDynamicUrl } from "./utils/features.js";
 
 export const app = express();
 
@@ -22,11 +24,15 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [process.env.LOCAL_FRONTEND_URL, process.env.FRONTEND_URL],
+    origin: ["*"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   })
 );
+
+const swaggerDocument = loadSwaggerWithDynamicUrl("./docs/swagger.yaml")
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(passport.initialize());
 passport.use(
@@ -34,7 +40,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${backendUrl}/Oauth2/google/callback`,
+      callbackURL: `${backendUrl}/api/v1/Oauth2/google/callback`,
       scope: ["profile", "email"],
     },
     async function (accessToken, refreshToken, profile, cb) {
@@ -44,12 +50,12 @@ passport.use(
 );
 
 app.get(
-  "/Oauth2/google",
+  "/api/v1/Oauth2/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 app.get(
-  "/Oauth2/google/callback",
+  "/api/v1/Oauth2/google/callback",
   passport.authenticate("google", {
     failureRedirect: `${frontendUrl}/`,
     session: false,

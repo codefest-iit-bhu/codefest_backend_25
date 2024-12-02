@@ -17,7 +17,7 @@ export const isAuthenticated = async (req, res, next) => {
     if (!decoded) {
       return res.status(404).json({
         success: false,
-        message: "Invalid Token",
+        message: "Invalid Token. Please login again or refresh your jwt",
       });
     }
 
