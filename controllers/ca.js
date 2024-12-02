@@ -58,7 +58,6 @@ export const updateRequest = async (req, res, next) => {
       );
     }
     if (status) {
-      request.status = status;
       if (req.user.role === "admin" && status === "approved") {
         await User.findByIdAndUpdate(request.user, { role: "ca" });
       }
@@ -66,6 +65,7 @@ export const updateRequest = async (req, res, next) => {
       if (req.user.role === "admin" && status !== "approved" && request.status === "approved") {
         await User.findByIdAndUpdate(request.user, { role: "user" });
       }
+      request.status = status;
     }
 
     if (req.user.role !== "admin") {
