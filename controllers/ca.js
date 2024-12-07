@@ -8,23 +8,21 @@ export const register = async (req, res, next) => {
     if (request)
       return next(new ErrorHandler("CA Request already exists", 400));
     const { institute, userDescription } = req.body;
-    await CARequest.create({
+    const newRequest = await CARequest.create({
       user: req.user._id,
       institute,
       userDescription,
     });
-    res.status(201).json({
-      message: "CA request sent successfully",
-    });
+    res.status(201).json(newRequest);
   } catch (error) {
     next(error);
   }
 };
 
-export const getMyRequest = async (req, res) => {
+export const getMyRequest = async (req, res, next) => {
   try {
     const request = await CARequest.findOne({ user: req.user._id });
-    if (!request) return next(new ErrorHandler("CA request not found", 404));
+    if (!request) return res.status(200).json({});
     res.status(200).json(request);
   } catch (error) {
     next(error);
@@ -37,7 +35,7 @@ export const getAllRequests = async (req, res, next) => {
       return next(
         new ErrorHandler("You are not allowed to see the CA requests", 403)
       );
-    const requests = await CARequest.find();
+    const requests = await CARequest.find().populate("user", "name");
     res.status(200).json(requests);
   } catch (error) {
     next(error);
@@ -75,7 +73,7 @@ export const updateRequest = async (req, res, next) => {
     } else {
       if (adminMessage) request.adminMessage = adminMessage;
     }
-    const updatedRequest = await request.save();
+    const updatedRequest = await CARequest.findByIdAndUpdate(request._id, request, { new: true })
     if (!updatedRequest)
       return next(new ErrorHandler("CA request couldn't be updated", 500));
     res.status(200).json(updatedRequest);

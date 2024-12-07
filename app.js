@@ -1,7 +1,6 @@
 import express from "express";
 import authRouter from "./routes/auth.js";
 import { config } from "dotenv";
-import cookieParser from "cookie-parser";
 import { errorMiddleware } from "./middlewares/error.js";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
@@ -17,18 +16,11 @@ import swaggerUi from "swagger-ui-express";
 import { loadSwaggerWithDynamicUrl } from "./utils/features.js";
 
 export const app = express();
+app.use(cors());
 
 config();
 
 app.use(express.json());
-app.use(cookieParser());
-app.use(
-  cors({
-    origin: [process.env.FRONTEND_URL, process.env.LOCAL_FRONTEND_URL],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-  })
-);
 
 const swaggerDocument = loadSwaggerWithDynamicUrl("./docs/swagger.yaml")
 

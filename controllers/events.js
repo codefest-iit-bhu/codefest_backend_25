@@ -1,6 +1,7 @@
 import { Events } from "../models/events.js";
 import ErrorHandler from "../middlewares/error.js";
 import { convertToDate } from "../utils/features.js";
+import { Members } from "../models/members.js";
 
 export const addEvent = async (req, res, next) => {
   try {
@@ -30,3 +31,23 @@ export const addEvent = async (req, res, next) => {
     next(error);
   }
 };
+
+export const isMember = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const event = await Events.findOne({ eventId })
+    const memberDoc = await Members.findOne({ user: req.user._id, event: event._id }).populate("team", "teamName")
+    if (memberDoc) {
+      res.json({
+        isMember: true,
+        teamName: memberDoc.team.teamName,
+      })
+    } else {
+      res.json({
+        isMember: false,
+      })
+    }
+  } catch (error) {
+    next(error)
+  }
+}

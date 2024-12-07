@@ -1,6 +1,6 @@
 import { User } from "../models/user.js";
 import bcrypt from "bcrypt";
-import { generateRefreshToken, saveCookie } from "../utils/features.js";
+import { generateRefreshToken, sendJwt } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
 import { frontendUrl } from "../config/constants.js";
 import { Session } from "../models/session.js";
@@ -73,15 +73,10 @@ export const googleCallback = async (user, req, res, next) => {
       res.redirect(`${frontendUrl}/setPassword?email=${email}`);
     else {
       const refreshToken = await generateRefreshToken(googleUser);
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ _id: googleUser._id }, process.env.JWT_SECRET, {
         expiresIn: "30m",
       });
-      res.cookie("token", token, {
-        httpOnly: true,
-        maxAge: 30 * 60 * 1000, // 30 minutes
-        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-        secure: process.env.NODE_ENV === "development" ? false : true,
-      }).redirect(`${frontendUrl}/main?refreshToken=${refreshToken}`);
+      res.redirect(`${frontendUrl}/backend_redirect?token=${token}&refreshToken=${refreshToken}`);
     }
   } catch (error) {
     next(error);
@@ -95,7 +90,7 @@ export const login = async (req, res, next) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return next(new ErrorHandler("Invalid Email!", 400));
+      return next(new ErrorHandler("Invalid email or password", 400));
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -104,7 +99,7 @@ export const login = async (req, res, next) => {
     }
 
     const refreshToken = await generateRefreshToken(user);
-    saveCookie(
+    sendJwt(
       user,
       res,
       next,
@@ -147,7 +142,7 @@ export const passwordSetter = async (req, res, next) => {
     await user.save();
 
     const refreshToken = await generateRefreshToken(user);
-    saveCookie(user, res, next, 201, "User Created Successfully", refreshToken);
+    sendJwt(user, res, next, 201, "User Created Successfully", refreshToken);
   } catch (error) {
     next(error);
   }
@@ -181,15 +176,15 @@ export const refreshJwt = async (req, res, next) => {
   try {
     const refreshToken = req.headers["x-refresh-token"];
     if (!refreshToken)
-      return next(new ErrorHandler("Please provide refresh token", 404));
+      return next(new ErrorHandler("Invalid Refresh Token", 401));
 
     const decoded = jwt.decode(refreshToken, process.env.JWT_SECRET);
-    if (!decoded) return next(new ErrorHandler("Invalid refresh token", 404));
+    if (!decoded) return next(new ErrorHandler("Invalid Refresh Token", 401));
 
     const session = Session.findOne({ user: decoded._id });
-    if (!session) return next(new ErrorHandler("No session found", 404));
+    if (!session) return next(new ErrorHandler("Invalid Refresh Token", 401));
 
-    saveCookie(
+    sendJwt(
       { "_id": session.user },
       res,
       next,
@@ -215,7 +210,7 @@ export const verifyEmail = async (req, res, next) => {
     });
     const refreshToken = await generateRefreshToken(user);
     await Verification.deleteOne({ email });
-    saveCookie(user, res, next, 201, "User Created Successfully", refreshToken);
+    sendJwt(user, res, next, 201, "User Created Successfully", refreshToken);
   } catch (error) {
     next(error);
   }

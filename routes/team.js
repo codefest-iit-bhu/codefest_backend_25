@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/create", isAuthenticated, createTeam);
 router.delete("/", isAuthenticated, deleteTeam);
-router.post("/changeLeader", isAuthenticated, changeLeader);
+router.patch("/changeLeader", isAuthenticated, changeLeader);
 router.get("/myTeams", isAuthenticated, getTeams);
 router.post("/name_available", nameAvailable);
 

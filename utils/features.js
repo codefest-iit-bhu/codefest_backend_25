@@ -4,7 +4,7 @@ import { Team } from "../models/team.js";
 import fs from "fs"
 import YAML from "yamljs";
 
-export const saveCookie = async (
+export const sendJwt = async (
   user,
   res,
   next,
@@ -19,15 +19,10 @@ export const saveCookie = async (
 
     res
       .status(statusCode)
-      .cookie("token", token, {
-        httpOnly: true,
-        maxAge: 30 * 60 * 1000, // 30 minutes
-        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
-        secure: process.env.NODE_ENV === "development" ? false : true,
-      })
       .json({
         success: true,
         message: message,
+        token,
         refreshToken,
       });
   } catch (error) {

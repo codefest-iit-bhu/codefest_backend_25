@@ -15,8 +15,8 @@ const schema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  eventId: {
-    type: String,
+  event: {
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: "Events",
   },

@@ -1,30 +1,23 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
+import ErrorHandler from "./error.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
-    const { token } = req.cookies;
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-      return res.status(404).json({
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
         success: false,
-        message: "Login first",
+        error: "Invalid JWT Token",
       });
     }
 
+    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!decoded) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid Token. Please login again or refresh your jwt",
-      });
-    }
-
     req.user = await User.findOne({ _id: decoded._id });
-
     next();
   } catch (error) {
-    next(error);
+    return next(new ErrorHandler("Invalid JWT Token", 401));
   }
 };

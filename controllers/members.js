@@ -14,8 +14,8 @@ export const joinTeam = async (req, res, next) => {
       return next(new ErrorHandler("Invalid Team Code", 404));
     }
 
-    const eventId = team.eventId;
-    const event = await Events.findOne({ eventId });
+    const eventId = team.event;
+    const event = await Events.findById(eventId);
     const maxMembers = event.maxMembers;
     const currentDate = new Date();
     const eventDeadline = new Date(event.eventDeadline);
@@ -29,7 +29,7 @@ export const joinTeam = async (req, res, next) => {
 
     const checkMember = await Members.findOne({
       user: req.user._id,
-      eventId,
+      event: eventId,
     });
     if (checkMember) {
       return next(new ErrorHandler("Already Registered", 400));
@@ -38,7 +38,7 @@ export const joinTeam = async (req, res, next) => {
     await Members.create({
       team: team._id,
       user: req.user._id,
-      eventId,
+      event: eventId,
     });
 
     res.status(201).json({
