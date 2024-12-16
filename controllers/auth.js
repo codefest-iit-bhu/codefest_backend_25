@@ -2,7 +2,6 @@ import { User } from "../models/user.js";
 import bcrypt from "bcrypt";
 import { generateRefreshToken, sendJwt } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
-import { frontendUrl } from "../config/constants.js";
 import { Session } from "../models/session.js";
 import jwt from "jsonwebtoken";
 import { generateOTP, sendVerification } from "../utils/sendVerification.js";
@@ -66,17 +65,18 @@ export const createGoogleUser = async (
 
 export const googleCallback = async (user, req, res, next) => {
   try {
+    const frontendUrl = req.frontendUrl;
     const email = user.emails[0].value;
     let googleUser = await User.findOne({ email }).select("+password");
 
     if (!googleUser.password)
-      res.redirect(`${frontendUrl}/setPassword?email=${email}`);
+      res.redirect(`${frontendUrl}setPassword?email=${email}`);
     else {
       const refreshToken = await generateRefreshToken(googleUser);
       const token = jwt.sign({ _id: googleUser._id }, process.env.JWT_SECRET, {
         expiresIn: "30m",
       });
-      res.redirect(`${frontendUrl}/backend_redirect?token=${token}&refreshToken=${refreshToken}`);
+      res.redirect(`${frontendUrl}backend_redirect?token=${token}&refreshToken=${refreshToken}`);
     }
   } catch (error) {
     next(error);

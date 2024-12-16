@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
 import ErrorHandler from "./error.js";
+import passport from "passport";
+import { frontendUrl } from "../config/constants.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
@@ -21,3 +23,14 @@ export const isAuthenticated = async (req, res, next) => {
     return next(new ErrorHandler("Invalid JWT Token", 401));
   }
 };
+
+export const cbMiddleware = (req, res, next) => {
+  const state = JSON.parse(req.query.state || "{}");
+  const frontend = state.frontendUrl || frontendUrl;
+  const callBack = passport.authenticate("google", {
+    failureRedirect: `${frontend}backend_redirect?error=unknown`,
+    session: false,
+  });
+  req.frontendUrl = frontend;
+  callBack(req, res, next);
+}

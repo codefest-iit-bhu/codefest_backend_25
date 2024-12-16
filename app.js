@@ -14,6 +14,7 @@ import eventRouter from "./routes/events.js";
 import userRouter from "./routes/user.js";
 import swaggerUi from "swagger-ui-express";
 import { loadSwaggerWithDynamicUrl } from "./utils/features.js";
+import { cbMiddleware } from "./middlewares/auth.js";
 
 export const app = express();
 app.use(cors());
@@ -43,15 +44,21 @@ passport.use(
 
 app.get(
   "/api/v1/Oauth2/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  (req, res, next) => {
+    const frontendUrl = req.headers.referer;
+    const state = JSON.stringify({ frontendUrl });
+    const authUrl = passport.authenticate("google", {
+      scope: ["profile", "email"],
+      state,
+    });
+
+    authUrl(req, res, next);
+  }
 );
 
 app.get(
   "/api/v1/Oauth2/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${frontendUrl}/`,
-    session: false,
-  }),
+  cbMiddleware,
   async (req, res, next) => {
     googleCallback(req.user, req, res, next);
   }
