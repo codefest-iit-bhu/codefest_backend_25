@@ -7,11 +7,16 @@ export const register = async (req, res, next) => {
     const request = await CARequest.findOne({ user: req.user._id });
     if (request)
       return next(new ErrorHandler("CA Request already exists", 400));
-    const { institute, userDescription } = req.body;
+    const { institute, userDescription, ca_brought_by, branch, graduation_year, contact_number, whatsapp_number } = req.body;
     const newRequest = await CARequest.create({
       user: req.user._id,
       institute,
       userDescription,
+      ca_brought_by,
+      branch,
+      graduation_year,
+      contact_number,
+      whatsapp_number
     });
     res.status(201).json(newRequest);
   } catch (error) {
@@ -44,7 +49,7 @@ export const getAllRequests = async (req, res, next) => {
 
 export const updateRequest = async (req, res, next) => {
   try {
-    const { status, institute, userDescription, adminMessage } = req.body
+    const { status, institute, userDescription, adminMessage, ca_brought_by, branch, graduation_year, contact_number, whatsapp_number } = req.body
     let request = await CARequest.findOne({ _id: req.params.id });
     if (!request) return next(new ErrorHandler("CA request not found", 404));
     if (req.user.role !== "admin" && status != "pending") {
@@ -70,6 +75,11 @@ export const updateRequest = async (req, res, next) => {
       if (institute) request.institute = institute;
       if (userDescription)
         request.userDescription = userDescription;
+      if (ca_brought_by) request.ca_brought_by = ca_brought_by;
+      if (branch) request.branch = branch;
+      if (graduation_year) request.graduation_year = graduation_year;
+      if (contact_number) request.contact_number = contact_number;
+      if (whatsapp_number) request.whatsapp_number = whatsapp_number;
     } else {
       if (adminMessage) request.adminMessage = adminMessage;
     }

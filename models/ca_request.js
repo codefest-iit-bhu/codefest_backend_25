@@ -10,6 +10,11 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  ca_brought_by: String,
+  branch: String,
+  graduation_year: String,
+  contact_number: String,
+  whatsapp_number: String,
   userDescription: {
     type: String,
   },
