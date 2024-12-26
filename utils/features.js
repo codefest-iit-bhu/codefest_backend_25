@@ -3,6 +3,7 @@ import { Session } from "../models/session.js";
 import { Team } from "../models/team.js";
 import fs from "fs"
 import YAML from "yamljs";
+import { CARequest } from "../models/ca_request.js";
 
 export const sendJwt = async (
   user,
@@ -58,6 +59,22 @@ export const generateRandomCode = async () => {
       );
     }
   } while (await Team.findOne({ teamCode: result }));
+
+  return result;
+};
+
+export const generateCAReferral = async () => {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+
+  do {
+    result = "";
+    for (let i = 0; i < 8; i++) {
+      result += characters.charAt(
+        Math.floor(Math.random() * characters.length)
+      );
+    }
+  } while (await CARequest.findOne({ referralCode: result }));
 
   return result;
 };

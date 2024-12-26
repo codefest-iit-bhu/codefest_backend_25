@@ -24,7 +24,7 @@ export const updateUser = async (req, res, next) => {
         )
       );
     const { role, institute, phone_num } = req.body;
-    if (role && role !== "user" && role !== "ca" && role !== "admin")
+    if (role && role !== "user" && role !== "admin")
       return next(new ErrorHandler("Invalid role", 400));
 
     let user = await User.findById(id);

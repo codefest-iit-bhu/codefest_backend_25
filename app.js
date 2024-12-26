@@ -45,8 +45,9 @@ passport.use(
 app.get(
   "/api/v1/Oauth2/google",
   (req, res, next) => {
+    const { referralCode } = req.query;
     const frontendUrl = req.headers.referer;
-    const state = JSON.stringify({ frontendUrl });
+    const state = JSON.stringify({ frontendUrl, referralCode });
     const authUrl = passport.authenticate("google", {
       scope: ["profile", "email"],
       state,

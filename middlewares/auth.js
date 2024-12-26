@@ -27,10 +27,12 @@ export const isAuthenticated = async (req, res, next) => {
 export const cbMiddleware = (req, res, next) => {
   const state = JSON.parse(req.query.state || "{}");
   const frontend = state.frontendUrl || frontendUrl;
+  const referralCode = state.referralCode || "";
   const callBack = passport.authenticate("google", {
     failureRedirect: `${frontend}backend_redirect?error=unknown`,
     session: false,
   });
   req.frontendUrl = frontend;
+  req.referralCode = referralCode;
   callBack(req, res, next);
 }

@@ -16,7 +16,7 @@ const schema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["user", "ca", "admin"],
+    enum: ["user", "admin"],
     default: "user",
   },
   institute: {
@@ -25,6 +25,7 @@ const schema = new mongoose.Schema({
   phone_num: {
     type: String,
   },
+  referredBy: String,
   createdAt: {
     type: Date,
     default: Date.now,

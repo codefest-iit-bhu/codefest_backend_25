@@ -26,6 +26,14 @@ const schema = new mongoose.Schema({
   adminMessage: {
     type: String,
   },
+  referralCode: {
+    type: String,
+    unique: true
+  },
+  points: {
+    type: Number,
+    default: 0,
+  }
 });
 
 export const CARequest = mongoose.model("CARequest", schema);

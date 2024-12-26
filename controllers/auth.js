@@ -7,10 +7,11 @@ import jwt from "jsonwebtoken";
 import { generateOTP, sendVerification } from "../utils/sendVerification.js";
 import { Verification } from "../models/verification.js";
 import validator from "validator";
+import { CARequest } from "../models/ca_request.js";
 
 export const signup = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, referralCode } = req.body;
 
     if (!validator.isLength(name, { min: 2, max: 50 })) {
       return next(
@@ -30,16 +31,12 @@ export const signup = async (req, res, next) => {
 
     let user = await User.findOne({ email });
     if (user) {
-      return next(new ErrorHandler("User Already Exist", 400));
+      return next(new ErrorHandler("User Already Exists", 400));
     }
 
     const hashedpswd = await bcrypt.hash(password, 10);
 
-    await sendVerification(email, generateOTP(), name, hashedpswd);
-    return res.status(200).json({
-      status: "success",
-      message: "Email sent for verification",
-    });
+    sendVerification(email, generateOTP(), name, hashedpswd, referralCode, res);
   } catch (error) {
     next(error);
   }
@@ -65,12 +62,17 @@ export const createGoogleUser = async (
 
 export const googleCallback = async (user, req, res, next) => {
   try {
-    const frontendUrl = req.frontendUrl;
+    const { frontendUrl, referralCode } = req;
     const email = user.emails[0].value;
     let googleUser = await User.findOne({ email }).select("+password");
 
-    if (!googleUser.password)
+    if (!googleUser.password) {
+      if (referralCode) {
+        googleUser.referredBy = referralCode
+        await googleUser.save();
+      }
       res.redirect(`${frontendUrl}setPassword?email=${email}`);
+    }
     else {
       const refreshToken = await generateRefreshToken(googleUser);
       const token = jwt.sign({ _id: googleUser._id }, process.env.JWT_SECRET, {
@@ -138,6 +140,16 @@ export const passwordSetter = async (req, res, next) => {
 
     const hashedpswd = await bcrypt.hash(password, 10);
 
+    const referralCode = user.referredBy;
+    if (referralCode) {
+      const ca = await CARequest.findOne({ referralCode });
+      if (ca && ca.status === 'approved') {
+        const points = 10;
+        ca.points += points;
+        await ca.save();
+      }
+    }
+
     user.password = hashedpswd;
     await user.save();
 
@@ -203,10 +215,20 @@ export const verifyEmail = async (req, res, next) => {
     const verification = await Verification.findOne({ email });
     if (!verification || verification.code != otp)
       return next(new ErrorHandler("OTP Invalid or Expired", 400));
+
+    if (verification.referralCode) {
+      const ca = await CARequest.findOne({ referralCode: verification.referralCode });
+      if (ca && ca.status === "approved") {
+        const points = 10;
+        ca.points += points;
+        await ca.save();
+      }
+    }
     const user = await User.create({
       name: verification.name,
       email: verification.email,
       password: verification.password,
+      referredBy: verification.referralCode
     });
     const refreshToken = await generateRefreshToken(user);
     await Verification.deleteOne({ email });

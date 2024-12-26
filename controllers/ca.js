@@ -1,6 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import { CARequest } from "../models/ca_request.js";
 import { User } from "../models/user.js";
+import { generateCAReferral } from "../utils/features.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -8,6 +9,8 @@ export const register = async (req, res, next) => {
     if (request)
       return next(new ErrorHandler("CA Request already exists", 400));
     const { institute, userDescription, ca_brought_by, branch, graduation_year, contact_number, whatsapp_number } = req.body;
+
+    const referralCode = await generateCAReferral();
     const newRequest = await CARequest.create({
       user: req.user._id,
       institute,
@@ -16,7 +19,8 @@ export const register = async (req, res, next) => {
       branch,
       graduation_year,
       contact_number,
-      whatsapp_number
+      whatsapp_number,
+      referralCode
     });
     res.status(201).json(newRequest);
   } catch (error) {
@@ -61,13 +65,6 @@ export const updateRequest = async (req, res, next) => {
       );
     }
     if (status) {
-      if (req.user.role === "admin" && status === "approved") {
-        await User.findByIdAndUpdate(request.user, { role: "ca" });
-      }
-
-      if (req.user.role === "admin" && status !== "approved" && request.status === "approved") {
-        await User.findByIdAndUpdate(request.user, { role: "user" });
-      }
       request.status = status;
     }
 
@@ -91,3 +88,19 @@ export const updateRequest = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getCALeaderboard = async (req, res, next) => {
+  try {
+    const ca_requests = await CARequest.find({ status: "approved" }).populate("user", "name").sort({ points: -1 });
+    const ca_leaderboard = ca_requests.map(request => {
+      return {
+        name: request.user.name,
+        institute: request.institute,
+        points: request.points
+      }
+    })
+    res.status(200).json(ca_leaderboard)
+  } catch (error) {
+    next(error)
+  }
+}

@@ -21,6 +21,7 @@ const schema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  referralCode: String
 });
 
 schema.index({ expiry: 1 }, { expireAfterSeconds: 0 });

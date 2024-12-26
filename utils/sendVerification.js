@@ -6,17 +6,17 @@ export function generateOTP() {
 	return otp;
 }
 
-export const sendVerification = async (to, otp, name, password) => {
+export const sendVerification = async (to, otp, name, password, referralCode, res) => {
 	const transporter = nodemailer.createTransport({
 		service: "gmail",
 		auth: {
-			user: "kolanuvarun739@gmail.com",
+			user: process.env.SMTP_EMAIL_ID,
 			pass: process.env.SMTP_APP_PASS,
 		},
 	});
 
-	const image_url = "https://iili.io/2cwlabs.png";
-	const from = "kolanuvarun739@gmail.com";
+	const image_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP63mBXmRPHkCh88H6n2upFPU-8ibISHho3A&s";
+	const from = process.env.SMTP_EMAIL_ID;
 	const mailOptions = {
 		from,
 		to,
@@ -69,7 +69,7 @@ export const sendVerification = async (to, otp, name, password) => {
         `,
 	};
 
-	await transporter.sendMail(mailOptions, async (error, info) => {
+	transporter.sendMail(mailOptions, async (error, info) => {
 		if (error) {
 			console.error("Error sending email:", error);
 			throw new Error("Error sending email:", error);
@@ -82,9 +82,13 @@ export const sendVerification = async (to, otp, name, password) => {
 				code: otp,
 				password,
 				expiry: new Date(Date.now() + 60 * 60 * 1000),
+				referralCode
 			},
 			{ upsert: true }
 		);
-
+		res.status(200).json({
+			status: "success",
+			message: "Email sent for verification",
+		});
 	});
 };
