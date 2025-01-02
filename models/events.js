@@ -17,6 +17,10 @@ const schema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  registrations_open: {
+    type: Boolean,
+    default: false,
+  }
 });
 
 export const Events = mongoose.model("Events", schema);

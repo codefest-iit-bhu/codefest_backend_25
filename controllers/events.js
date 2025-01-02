@@ -51,3 +51,13 @@ export const isMember = async (req, res, next) => {
     next(error)
   }
 }
+
+export const getEvent = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const event = await Events.findOne({ eventId })
+    return res.status(200).json(event)
+  } catch (error) {
+    next(error)
+  }
+}
