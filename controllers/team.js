@@ -102,7 +102,7 @@ export const changeLeader = async (req, res, next) => {
   }
 };
 
-export const getTeams = async (req, res, next) => {
+export const getMyTeams = async (req, res, next) => {
   try {
     const teams = await Team.aggregate([
       {
@@ -124,6 +124,15 @@ export const getTeams = async (req, res, next) => {
           localField: "members.user",
           foreignField: "_id",
           as: "userDetails",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                email: 1,
+              },
+            },
+          ],
         },
       },
       {
