@@ -2,6 +2,7 @@ import { Events } from "../models/events.js";
 import { Members } from "../models/members.js";
 import ErrorHandler from "../middlewares/error.js";
 import { Team } from "../models/team.js";
+import { User } from "../models/user.js";
 
 export const joinTeam = async (req, res, next) => {
   try {
@@ -40,6 +41,14 @@ export const joinTeam = async (req, res, next) => {
       user: req.user._id,
       event: eventId,
     });
+
+    try {
+      if (req.user.referredBy) {
+        await updateCAPoints(req.user.referredBy, 2);
+      }
+    } catch (error) {
+      console.error(error)
+    }
 
     res.status(201).json({
       success: true,
@@ -90,6 +99,16 @@ export const deleteMember = async (req, res, next) => {
       return next(new ErrorHandler("Unauthorized to delete the user", 401));
     }
     await Members.deleteOne({ user: userId, team: teamId });
+
+    const user = await User.findById(userId);
+    try {
+      if (user.referredBy) {
+        await updateCAPoints(req.user.referredBy, -2);
+      }
+    } catch (error) {
+      console.error(error)
+    }
+
     res.status(200).json({
       status: "success",
       message: "Member Deleted Successfully",

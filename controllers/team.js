@@ -1,7 +1,7 @@
 import { Team } from "../models/team.js";
 import { Members } from "../models/members.js";
 import { Events } from "../models/events.js";
-import { generateRandomCode } from "../utils/features.js";
+import { generateRandomCode, updateCAPoints } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
 import mongoose from "mongoose";
 
@@ -39,6 +39,14 @@ export const createTeam = async (req, res, next) => {
       event: event._id,
     });
 
+    try {
+      if (req.user.referredBy) {
+        await updateCAPoints(req.user.referredBy, 2);
+      }
+    } catch (error) {
+      console.error(error)
+    }
+
     res.status(201).json({
       success: true,
       message: "Team Created Successfully",
@@ -58,8 +66,23 @@ export const deleteTeam = async (req, res, next) => {
       return next(new ErrorHandler("Team Not Found", 404));
     }
 
+    if (team.teamLeader.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler("Access Denied", 403));
+    }
+
+    const members = await Members.find({ team: team._id }).populate("user", "referredBy");
+    for (const member of members) {
+      try {
+        if (member.user && member.user.referredBy) {
+          await updateCAPoints(member.user.referredBy, -2);
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
     await Team.deleteOne({ teamCode });
     await Members.deleteMany({ team: team._id });
+
     res.status(200).json({
       success: true,
       message: "Team Deleted Successfully",

@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { User } from "../models/user.js"; // Adjust the path based on your project structure
+
 
 const schema = new mongoose.Schema({
   team: {
