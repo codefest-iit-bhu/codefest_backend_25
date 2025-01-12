@@ -64,9 +64,6 @@ export const updateRequest = async (req, res, next) => {
         )
       );
     }
-    if (status) {
-      request.status = status;
-    }
 
     if (req.user.role !== "admin") {
       if (institute) request.institute = institute;
@@ -79,6 +76,28 @@ export const updateRequest = async (req, res, next) => {
       if (whatsapp_number) request.whatsapp_number = whatsapp_number;
     } else {
       if (adminMessage) request.adminMessage = adminMessage;
+      try {
+        if (status) {
+          if (status === "approved" && request.status !== "approved") {
+            const ca_request = await CARequest.findOne({referralCode: request.ca_brought_by});
+            if (ca_request && ca_request.status === "approved") {
+              ca_request.points += 30;
+              await ca_request.save();
+            }
+          } else if (status !== "approved" && request.status === "approved") {
+            const ca_request = await CARequest.findOne({referralCode: request.ca_brought_by});
+            if (ca_request && ca_request.status === "approved") {
+              ca_request.points -= 30;
+              await ca_request.save();
+            }
+          }
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    if (status) {
+      request.status = status;
     }
     const updatedRequest = await CARequest.findByIdAndUpdate(request._id, request, { new: true })
     if (!updatedRequest)
