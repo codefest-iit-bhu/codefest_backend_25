@@ -13,6 +13,7 @@ mongoose
         const members = await Members.find().populate("user", "_id, referredBy");
         for (const ca_request of ca_requests) {
             const users = await User.find({ referredBy: ca_request.referralCode })
+            const cas_referred = await CARequest.find({referredBy: ca_request.referralCode, status: "approved"})
             const numMembersReferred = members.filter(member => {
                 if (member.user && member.user.referredBy) {
                     return member.user.referredBy === ca_request.referralCode
@@ -24,8 +25,8 @@ mongoose
             // }
             await CARequest.findOneAndUpdate(
                 { referralCode: ca_request.referralCode },
-                { points: numMembersReferred * 2 + users.length * 10 },
+                { points: numMembersReferred * 10 + users.length * 10 + cas_referred.length * 30 },
             );
         }
         console.log("Done")
-    })
+    }).catch(err => console.log(err))

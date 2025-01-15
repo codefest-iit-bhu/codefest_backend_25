@@ -41,7 +41,7 @@ export const createTeam = async (req, res, next) => {
 
     try {
       if (req.user.referredBy) {
-        await updateCAPoints(req.user.referredBy, 2);
+        await updateCAPoints(req.user.referredBy, 10);
       }
     } catch (error) {
       console.error(error)
@@ -74,7 +74,7 @@ export const deleteTeam = async (req, res, next) => {
     for (const member of members) {
       try {
         if (member.user && member.user.referredBy) {
-          await updateCAPoints(member.user.referredBy, -2);
+          await updateCAPoints(member.user.referredBy, -10);
         }
       } catch (error) {
         console.error(error)
