@@ -1,7 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import { CARequest } from "../models/ca_request.js";
 import { User } from "../models/user.js";
-import { generateCAReferral } from "../utils/features.js";
+import { generateCAReferral, updateCAPoints } from "../utils/features.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -79,17 +79,9 @@ export const updateRequest = async (req, res, next) => {
       try {
         if (status) {
           if (status === "approved" && request.status !== "approved") {
-            const ca_request = await CARequest.findOne({referralCode: request.ca_brought_by});
-            if (ca_request && ca_request.status === "approved") {
-              ca_request.points += 30;
-              await ca_request.save();
-            }
+            await updateCAPoints(request.ca_brought_by, 30);
           } else if (status !== "approved" && request.status === "approved") {
-            const ca_request = await CARequest.findOne({referralCode: request.ca_brought_by});
-            if (ca_request && ca_request.status === "approved") {
-              ca_request.points -= 30;
-              await ca_request.save();
-            }
+            await updateCAPoints(request.ca_brought_by, -30);
           }
         }
       } catch (error) {
@@ -99,7 +91,7 @@ export const updateRequest = async (req, res, next) => {
     if (status) {
       request.status = status;
     }
-    const updatedRequest = await CARequest.findByIdAndUpdate(request._id, request, { new: true })
+    const updatedRequest = await CARequest.findByIdAndUpdate(request._id, request, { new: true }).populate("user")
     if (!updatedRequest)
       return next(new ErrorHandler("CA request couldn't be updated", 500));
     res.status(200).json(updatedRequest);
@@ -110,14 +102,20 @@ export const updateRequest = async (req, res, next) => {
 
 export const getCALeaderboard = async (req, res, next) => {
   try {
-    const ca_requests = await CARequest.find({ status: "approved" }).populate("user", "name").sort({ points: -1 });
-    const ca_leaderboard = ca_requests.map(request => {
-      return {
-        name: request.user.name,
-        institute: request.institute,
-        points: request.points
-      }
+    const ca_requests = await CARequest.find({
+      $or: [
+        { status: "approved" },
+        { $and: [{ status: { $ne: "approved" } }, { points: { $gt: 0 } }] }
+      ]
     })
+      .populate("user", "name")
+      .sort({ points: -1 }); const ca_leaderboard = ca_requests.map(request => {
+        return {
+          name: request.user.name,
+          institute: request.institute,
+          points: request.points
+        }
+      })
     res.status(200).json(ca_leaderboard)
   } catch (error) {
     next(error)
