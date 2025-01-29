@@ -33,7 +33,11 @@ const schema = new mongoose.Schema({
   points: {
     type: Number,
     default: 0,
-  }
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 export const CARequest = mongoose.model("CARequest", schema);

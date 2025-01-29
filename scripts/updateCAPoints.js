@@ -15,19 +15,29 @@ mongoose
         const cas = await CARequest.find({ status: "approved" })
         let i = 1;
         console.log("Total requests: ", ca_requests.length);
+        let pointUpdateDate = new Date("2025-01-29T15:00:00"); // Set time to 3 PM UTC
+        pointUpdateDate = new Date(pointUpdateDate.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
         for (const ca_request of ca_requests) {
             console.log("Request ", i);
-            const users_referred = users.filter(user => user.referredBy === ca_request.referralCode);
-            const cas_referred = cas.filter(ca => ca.ca_brought_by === ca_request.referralCode);
-            const numMembersReferred = members.filter(member => {
-                if (member.user && member.user.referredBy) {
+            const users_referred_before = users.filter(user => user.referredBy === ca_request.referralCode && user.createdAt < pointUpdateDate);
+            const users_referred_after = users.filter(user => user.referredBy === ca_request.referralCode && user.createdAt >= pointUpdateDate);
+            const cas_referred_before = cas.filter(ca => ca.ca_brought_by === ca_request.referralCode && (!ca.createdAt || ca.createdAt < pointUpdateDate));
+            const cas_referred_after = cas.filter(ca => ca.ca_brought_by === ca_request.referralCode && (ca.createdAt && ca.createdAt >= pointUpdateDate));
+            const numMembersReferred_before = members.filter(member => {
+                if (member.user && member.user.referredBy && member.createdAt < pointUpdateDate) {
+                    return member.user.referredBy === ca_request.referralCode
+                }
+                return false
+            }).length
+            const numMembersReferred_after = members.filter(member => {
+                if (member.user && member.user.referredBy && member.createdAt >= pointUpdateDate) {
                     return member.user.referredBy === ca_request.referralCode
                 }
                 return false
             }).length
             await CARequest.findOneAndUpdate(
                 { referralCode: ca_request.referralCode },
-                { points: numMembersReferred * 10 + users_referred.length * 10 + cas_referred.length * 30 },
+                { points: (numMembersReferred_before * 10 + users_referred_before.length * 10 + cas_referred_before.length * 30) + (numMembersReferred_after * 20 + users_referred_after.length * 20 + cas_referred_after.length * 60) },
             );
             i += 1;
         }

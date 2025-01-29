@@ -3,6 +3,7 @@ import { Members } from "../models/members.js";
 import ErrorHandler from "../middlewares/error.js";
 import { Team } from "../models/team.js";
 import { User } from "../models/user.js";
+import { updateCAPoints } from "../utils/features.js";
 
 export const joinTeam = async (req, res, next) => {
   try {
