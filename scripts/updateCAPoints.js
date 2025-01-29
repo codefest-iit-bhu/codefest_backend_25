@@ -37,7 +37,7 @@ mongoose
             }).length
             await CARequest.findOneAndUpdate(
                 { referralCode: ca_request.referralCode },
-                { points: (numMembersReferred_before * 10 + users_referred_before.length * 10 + cas_referred_before.length * 30) + (numMembersReferred_after * 20 + users_referred_after.length * 20 + cas_referred_after.length * 60) },
+                { points: (numMembersReferred_before * 10 + users_referred_before.length * 10 + cas_referred_before.length * 30) + (numMembersReferred_after * 15 + users_referred_after.length * 10 + cas_referred_after.length * 30) },
             );
             i += 1;
         }

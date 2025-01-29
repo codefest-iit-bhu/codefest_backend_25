@@ -95,9 +95,9 @@ export const updateRequest = async (req, res, next) => {
       try {
         if (status) {
           if (status === "approved" && request.status !== "approved") {
-            await updateCAPoints(request.ca_brought_by, 60);
+            await updateCAPoints(request.ca_brought_by, 30);
           } else if (status !== "approved" && request.status === "approved") {
-            await updateCAPoints(request.ca_brought_by, -60);
+            await updateCAPoints(request.ca_brought_by, -30);
           }
         }
       } catch (error) {
