@@ -68,17 +68,18 @@ export const googleCallback = async (user, req, res, next) => {
 
     if (!googleUser.password) {
       if (referralCode) {
-        googleUser.referredBy = referralCode
+        googleUser.referredBy = referralCode;
         await googleUser.save();
       }
       res.redirect(`${frontendUrl}setPassword?email=${email}`);
-    }
-    else {
+    } else {
       const refreshToken = await generateRefreshToken(googleUser);
       const token = jwt.sign({ _id: googleUser._id }, process.env.JWT_SECRET, {
         expiresIn: "30m",
       });
-      res.redirect(`${frontendUrl}backend_redirect?token=${token}&refreshToken=${refreshToken}`);
+      res.redirect(
+        `${frontendUrl}backend_redirect?token=${token}&refreshToken=${refreshToken}`
+      );
     }
   } catch (error) {
     next(error);
@@ -101,14 +102,7 @@ export const login = async (req, res, next) => {
     }
 
     const refreshToken = await generateRefreshToken(user);
-    sendJwt(
-      user,
-      res,
-      next,
-      200,
-      `Welcome Back, ${user.name}`,
-      refreshToken
-    );
+    sendJwt(user, res, next, 200, `Welcome Back, ${user.name}`, refreshToken);
   } catch (error) {
     next(error);
   }
@@ -143,8 +137,8 @@ export const passwordSetter = async (req, res, next) => {
     const referralCode = user.referredBy;
     if (referralCode) {
       const ca = await CARequest.findOne({ referralCode });
-      if (ca && ca.status === 'approved') {
-        const points = 10;
+      if (ca && ca.status === "approved") {
+        const points = 20;
         ca.points += points;
         await ca.save();
       }
@@ -197,7 +191,7 @@ export const refreshJwt = async (req, res, next) => {
     if (!session) return next(new ErrorHandler("Invalid Refresh Token", 401));
 
     sendJwt(
-      { "_id": session.user },
+      { _id: session.user },
       res,
       next,
       200,
@@ -217,9 +211,11 @@ export const verifyEmail = async (req, res, next) => {
       return next(new ErrorHandler("OTP Invalid or Expired", 400));
 
     if (verification.referralCode) {
-      const ca = await CARequest.findOne({ referralCode: verification.referralCode });
+      const ca = await CARequest.findOne({
+        referralCode: verification.referralCode,
+      });
       if (ca && ca.status === "approved") {
-        const points = 10;
+        const points = 20;
         ca.points += points;
         await ca.save();
       }
@@ -228,7 +224,7 @@ export const verifyEmail = async (req, res, next) => {
       name: verification.name,
       email: verification.email,
       password: verification.password,
-      referredBy: verification.referralCode
+      referredBy: verification.referralCode,
     });
     const refreshToken = await generateRefreshToken(user);
     await Verification.deleteOne({ email });

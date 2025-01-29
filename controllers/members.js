@@ -8,7 +8,7 @@ export const joinTeam = async (req, res, next) => {
   try {
     const { teamCode } = req.body;
     const team = await Team.findOne({ teamCode });
-    if (!team) return next(new ErrorHandler("Team not found", 404))
+    if (!team) return next(new ErrorHandler("Team not found", 404));
     const members = await Members.find({ team: team._id });
 
     if (!team) {
@@ -44,10 +44,10 @@ export const joinTeam = async (req, res, next) => {
 
     try {
       if (req.user.referredBy) {
-        await updateCAPoints(req.user.referredBy, 10);
+        await updateCAPoints(req.user.referredBy, 20);
       }
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
 
     res.status(201).json({
@@ -103,10 +103,10 @@ export const deleteMember = async (req, res, next) => {
     const user = await User.findById(userId);
     try {
       if (user.referredBy) {
-        await updateCAPoints(req.user.referredBy, -10);
+        await updateCAPoints(req.user.referredBy, -20);
       }
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
 
     res.status(200).json({

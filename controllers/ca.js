@@ -1,6 +1,5 @@
 import ErrorHandler from "../middlewares/error.js";
 import { CARequest } from "../models/ca_request.js";
-import { User } from "../models/user.js";
 import { generateCAReferral, updateCAPoints } from "../utils/features.js";
 
 export const register = async (req, res, next) => {
@@ -8,7 +7,15 @@ export const register = async (req, res, next) => {
     const request = await CARequest.findOne({ user: req.user._id });
     if (request)
       return next(new ErrorHandler("CA Request already exists", 400));
-    const { institute, userDescription, ca_brought_by, branch, graduation_year, contact_number, whatsapp_number } = req.body;
+    const {
+      institute,
+      userDescription,
+      ca_brought_by,
+      branch,
+      graduation_year,
+      contact_number,
+      whatsapp_number,
+    } = req.body;
 
     const referralCode = await generateCAReferral();
     const newRequest = await CARequest.create({
@@ -20,7 +27,7 @@ export const register = async (req, res, next) => {
       graduation_year,
       contact_number,
       whatsapp_number,
-      referralCode
+      referralCode,
     });
     res.status(201).json(newRequest);
   } catch (error) {
@@ -53,7 +60,17 @@ export const getAllRequests = async (req, res, next) => {
 
 export const updateRequest = async (req, res, next) => {
   try {
-    const { status, institute, userDescription, adminMessage, ca_brought_by, branch, graduation_year, contact_number, whatsapp_number } = req.body
+    const {
+      status,
+      institute,
+      userDescription,
+      adminMessage,
+      ca_brought_by,
+      branch,
+      graduation_year,
+      contact_number,
+      whatsapp_number,
+    } = req.body;
     let request = await CARequest.findOne({ _id: req.params.id });
     if (!request) return next(new ErrorHandler("CA request not found", 404));
     if (req.user.role !== "admin" && status != "pending") {
@@ -67,8 +84,7 @@ export const updateRequest = async (req, res, next) => {
 
     if (req.user.role !== "admin") {
       if (institute) request.institute = institute;
-      if (userDescription)
-        request.userDescription = userDescription;
+      if (userDescription) request.userDescription = userDescription;
       if (ca_brought_by) request.ca_brought_by = ca_brought_by;
       if (branch) request.branch = branch;
       if (graduation_year) request.graduation_year = graduation_year;
@@ -79,19 +95,23 @@ export const updateRequest = async (req, res, next) => {
       try {
         if (status) {
           if (status === "approved" && request.status !== "approved") {
-            await updateCAPoints(request.ca_brought_by, 30);
+            await updateCAPoints(request.ca_brought_by, 60);
           } else if (status !== "approved" && request.status === "approved") {
-            await updateCAPoints(request.ca_brought_by, -30);
+            await updateCAPoints(request.ca_brought_by, -60);
           }
         }
       } catch (error) {
-        console.log(error)
+        console.log(error);
       }
     }
     if (status) {
       request.status = status;
     }
-    const updatedRequest = await CARequest.findByIdAndUpdate(request._id, request, { new: true }).populate("user")
+    const updatedRequest = await CARequest.findByIdAndUpdate(
+      request._id,
+      request,
+      { new: true }
+    ).populate("user");
     if (!updatedRequest)
       return next(new ErrorHandler("CA request couldn't be updated", 500));
     res.status(200).json(updatedRequest);
@@ -105,19 +125,20 @@ export const getCALeaderboard = async (req, res, next) => {
     const ca_requests = await CARequest.find({
       $or: [
         { status: "approved" },
-        { $and: [{ status: { $ne: "approved" } }, { points: { $gt: 0 } }] }
-      ]
+        { $and: [{ status: { $ne: "approved" } }, { points: { $gt: 0 } }] },
+      ],
     })
       .populate("user", "name")
-      .sort({ points: -1 }); const ca_leaderboard = ca_requests.map(request => {
-        return {
-          name: request.user.name,
-          institute: request.institute,
-          points: request.points
-        }
-      })
-    res.status(200).json(ca_leaderboard)
+      .sort({ points: -1 });
+    const ca_leaderboard = ca_requests.map((request) => {
+      return {
+        name: request.user.name,
+        institute: request.institute,
+        points: request.points,
+      };
+    });
+    res.status(200).json(ca_leaderboard);
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};

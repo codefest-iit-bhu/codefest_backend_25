@@ -41,10 +41,10 @@ export const createTeam = async (req, res, next) => {
 
     try {
       if (req.user.referredBy) {
-        await updateCAPoints(req.user.referredBy, 10);
+        await updateCAPoints(req.user.referredBy, 20);
       }
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
 
     res.status(201).json({
@@ -70,14 +70,17 @@ export const deleteTeam = async (req, res, next) => {
       return next(new ErrorHandler("Access Denied", 403));
     }
 
-    const members = await Members.find({ team: team._id }).populate("user", "referredBy");
+    const members = await Members.find({ team: team._id }).populate(
+      "user",
+      "referredBy"
+    );
     for (const member of members) {
       try {
         if (member.user && member.user.referredBy) {
-          await updateCAPoints(member.user.referredBy, -10);
+          await updateCAPoints(member.user.referredBy, -20);
         }
       } catch (error) {
-        console.error(error)
+        console.error(error);
       }
     }
     await Team.deleteOne({ teamCode });
@@ -118,7 +121,7 @@ export const changeLeader = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Leader Changed Successfully",
-      team
+      team,
     });
   } catch (error) {
     next(error);
@@ -179,7 +182,9 @@ export const getMyTeams = async (req, res, next) => {
                     user: {
                       $arrayElemAt: [
                         "$userDetails",
-                        { $indexOfArray: ["$userDetails._id", "$$member.user"] },
+                        {
+                          $indexOfArray: ["$userDetails._id", "$$member.user"],
+                        },
                       ],
                     },
                   },
@@ -195,7 +200,6 @@ export const getMyTeams = async (req, res, next) => {
       },
     ]);
 
-
     res.status(200).json(teams);
   } catch (error) {
     next(error);
@@ -206,9 +210,8 @@ export const nameAvailable = async (req, res, next) => {
   try {
     const { name, eventId } = req.body;
     const event = await Events.findOne({ eventId });
-    const team = await Team.findOne({ teamName: name, event: event._id })
-    if (team)
-      return res.status(200).json({ status: "failure" });
+    const team = await Team.findOne({ teamName: name, event: event._id });
+    if (team) return res.status(200).json({ status: "failure" });
     else return res.status(200).json({ status: "success" });
   } catch (error) {
     next(error);
