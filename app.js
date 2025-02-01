@@ -12,6 +12,7 @@ import memberRouter from "./routes/members.js";
 import caRouter from "./routes/ca.js";
 import eventRouter from "./routes/events.js";
 import userRouter from "./routes/user.js";
+import winzoRouter from "./routes/winzo.js";
 import swaggerUi from "swagger-ui-express";
 import { loadSwaggerWithDynamicUrl } from "./utils/features.js";
 import { cbMiddleware } from "./middlewares/auth.js";
@@ -71,6 +72,7 @@ app.use("/api/v1/member", memberRouter);
 app.use("/api/v1/ca", caRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/event", eventRouter);
+app.use("/api/v1/winzo", winzoRouter);
 
 app.get("/", (req, res) => {
   res.send("Server is working");

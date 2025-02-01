@@ -4,6 +4,7 @@ import { Team } from "../models/team.js";
 import fs from "fs"
 import YAML from "yamljs";
 import { CARequest } from "../models/ca_request.js";
+import { Referral } from "../models/ca_winzo_referrals.js";
 
 export const sendJwt = async (
   user,
@@ -75,6 +76,22 @@ export const generateCAReferral = async () => {
       );
     }
   } while (await CARequest.findOne({ referralCode: result }));
+
+  return result;
+};
+
+export const generateWinzoUsername = async () => {
+  const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+
+  do {
+    result = "";
+    for (let i = 0; i < 5; i++) {
+      result += characters.charAt(
+        Math.floor(Math.random() * characters.length)
+      );
+    }
+  } while (await Referral.findOne({ referredBy: result }));
 
   return result;
 };
