@@ -100,3 +100,40 @@ export const updateWinzoPoints = async (req, res, next) => {
         next(error);
     }
 }
+
+export const getMyReferrals = async (req, res, next) => {
+    try {
+        const ca_request = await CARequest.findOne({ user: req.user._id });
+        const referrals = await Referral.find({ referredBy: ca_request.referralCode });
+        return res.status(200).json(referrals);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getWinzoLeaderboard = async (req, res, next) => {
+    try {
+        const ca_request = await CARequest.findOne({ user: req.user._id });
+        if (!ca_request && req.user.role !== "admin") {
+            return next(new ErrorHandler("Non CAs are not allowed to access", 403));
+        }
+        const ca_requests = await CARequest.find({
+            $or: [
+                { status: "approved" },
+                { $and: [{ status: { $ne: "approved" } }, { winzo_points: { $gt: 0 } }] },
+            ],
+        })
+            .populate("user", "name")
+            .sort({ points: -1 });
+        const ca_leaderboard = ca_requests.map((request) => {
+            return {
+                name: request.user.name,
+                institute: request.institute,
+                points: request.winzo_points,
+            };
+        });
+        res.status(200).json(ca_leaderboard);
+    } catch (error) {
+        next(error);
+    }
+};
