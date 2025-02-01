@@ -13,7 +13,14 @@ export const createReferral = async (req, res, next) => {
             return next(new ErrorHandler("Your CA request is not approved yet", 403));
         }
 
-        const username = await generateWinzoUsername();
+        if (name.length <= 2) {
+            return next(new ErrorHandler("Name should be at least 3 characters long", 400));
+        }
+        if (name.length > 30) {
+            return next(new ErrorHandler("Name can be maximum 30 characters long", 400));
+        }
+
+        const username = await generateWinzoUsername(name);
         const referral = await Referral.create({
             referredBy: ca_request.referralCode,
             username,
@@ -124,7 +131,7 @@ export const getWinzoLeaderboard = async (req, res, next) => {
             ],
         })
             .populate("user", "name")
-            .sort({ points: -1 });
+            .sort({ winzo_points: -1 });
         const ca_leaderboard = ca_requests.map((request) => {
             return {
                 name: request.user.name,

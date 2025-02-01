@@ -80,17 +80,25 @@ export const generateCAReferral = async () => {
   return result;
 };
 
-export const generateWinzoUsername = async () => {
-  const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+export const generateWinzoUsername = async (name) => {
+  const characters = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
   let result = "";
 
   do {
     result = "";
-    for (let i = 0; i < 5; i++) {
-      result += characters.charAt(
-        Math.floor(Math.random() * characters.length)
-      );
+    for (let i = 0; i < 3; i++) {
+      if (i < 2) {
+        result += characters.charAt(
+          Math.floor(Math.random() * characters.length)
+        );
+      } else {
+        result += digits.charAt(
+          Math.floor(Math.random() * digits.length)
+        );
+      }
     }
+    result += `_${name.toLowerCase()}`;
   } while (await Referral.findOne({ referredBy: result }));
 
   return result;
