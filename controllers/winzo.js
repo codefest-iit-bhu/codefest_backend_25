@@ -65,14 +65,7 @@ export const updateWinzoPoints = async (req, res, next) => {
         }
 
         let tokens = text.split("\n");
-        const rupee = "₹";
-        let newTokens = []
-        const n = tokens.length;
-        for (let i = 0; i < n; ++i) {
-            if (tokens[i][0] === rupee) {
-                newTokens.push(tokens[i - 5].toLowerCase());
-            }
-        }
+        let newTokens = tokens.map(token => token.toLowerCase());
 
         const ca_requests = await CARequest.find();
         const referrals_verified = await Referral.find({ username: { $in: newTokens } });
