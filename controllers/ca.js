@@ -92,17 +92,17 @@ export const updateRequest = async (req, res, next) => {
       if (whatsapp_number) request.whatsapp_number = whatsapp_number;
     } else {
       if (adminMessage) request.adminMessage = adminMessage;
-      try {
-        if (status) {
-          if (status === "approved" && request.status !== "approved") {
-            await updateCAPoints(request.ca_brought_by, 30);
-          } else if (status !== "approved" && request.status === "approved") {
-            await updateCAPoints(request.ca_brought_by, -30);
-          }
-        }
-      } catch (error) {
-        console.log(error);
-      }
+      // try {
+      //   if (status) {
+      //     if (status === "approved" && request.status !== "approved") {
+      //       await updateCAPoints(request.ca_brought_by, 30);
+      //     } else if (status !== "approved" && request.status === "approved") {
+      //       await updateCAPoints(request.ca_brought_by, -30);
+      //     }
+      //   }
+      // } catch (error) {
+      //   console.log(error);
+      // }
     }
     if (status) {
       request.status = status;
