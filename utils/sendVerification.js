@@ -2,26 +2,36 @@ import nodemailer from "nodemailer";
 import { Verification } from "../models/verification.js";
 
 export function generateOTP() {
-	const otp = Math.floor(100000 + Math.random() * 900000);
-	return otp;
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  return otp;
 }
 
-export const sendVerification = async (to, otp, name, password, referralCode, res) => {
-	const transporter = nodemailer.createTransport({
-		service: "gmail",
-		auth: {
-			user: process.env.SMTP_EMAIL_ID,
-			pass: process.env.SMTP_APP_PASS,
-		},
-	});
+export const sendVerification = async (
+  to,
+  otp,
+  name,
+  password,
+  referralCode,
+  res
+) => {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.SMTP_EMAIL_ID,
+      pass: process.env.SMTP_APP_PASS,
+    },
+  });
 
-	const image_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP63mBXmRPHkCh88H6n2upFPU-8ibISHho3A&s";
-	const from = process.env.SMTP_EMAIL_ID;
-	const mailOptions = {
-		from,
-		to,
-		subject: "Email Verification - Codefest'25",
-		html: `
+  const image_url =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP63mBXmRPHkCh88H6n2upFPU-8ibISHho3A&s";
+  const from = process.env.SMTP_EMAIL_ID;
+  const mailOptions = {
+    from,
+    to,
+    subject: "Email Verification - Codefest'25",
+    html: `
         <html lang="en">
 
 		<body>
@@ -67,28 +77,28 @@ export const sendVerification = async (to, otp, name, password, referralCode, re
 
 		</html>
         `,
-	};
+  };
 
-	transporter.sendMail(mailOptions, async (error, info) => {
-		if (error) {
-			console.error("Error sending email:", error);
-			throw new Error("Error sending email:", error);
-		}
-		await Verification.findOneAndUpdate(
-			{ email: to },
-			{
-				name,
-				email: to,
-				code: otp,
-				password,
-				expiry: new Date(Date.now() + 60 * 60 * 1000),
-				referralCode
-			},
-			{ upsert: true }
-		);
-		res.status(200).json({
-			status: "success",
-			message: "Email sent for verification",
-		});
-	});
+  transporter.sendMail(mailOptions, async (error, info) => {
+    if (error) {
+      console.error("Error sending email:", error);
+      throw new Error("Error sending email:", error);
+    }
+    await Verification.findOneAndUpdate(
+      { email: to },
+      {
+        name,
+        email: to,
+        code: otp,
+        password,
+        expiry: new Date(Date.now() + 60 * 60 * 1000),
+        referralCode,
+      },
+      { upsert: true }
+    );
+    res.status(200).json({
+      status: "success",
+      message: "Email sent for verification",
+    });
+  });
 };
