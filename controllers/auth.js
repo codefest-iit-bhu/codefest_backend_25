@@ -138,7 +138,7 @@ export const passwordSetter = async (req, res, next) => {
     if (referralCode) {
       const ca = await CARequest.findOne({ referralCode });
       if (ca && ca.status === "approved") {
-        const points = 10;
+        const points = 20;
         ca.points += points;
         await ca.save();
       }
@@ -215,7 +215,7 @@ export const verifyEmail = async (req, res, next) => {
         referralCode: verification.referralCode,
       });
       if (ca && ca.status === "approved") {
-        const points = 10;
+        const points = 20;
         ca.points += points;
         await ca.save();
       }
