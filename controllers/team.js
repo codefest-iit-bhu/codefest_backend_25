@@ -39,13 +39,13 @@ export const createTeam = async (req, res, next) => {
       event: event._id,
     });
 
-    // try {
-    //   if (req.user.referredBy) {
-    //     await updateCAPoints(req.user.referredBy, 15);
-    //   }
-    // } catch (error) {
-    //   console.error(error);
-    // }
+    try {
+      if (req.user.referredBy) {
+        await updateCAPoints(req.user.referredBy, 10);
+      }
+    } catch (error) {
+      console.error(error);
+    }
 
     res.status(201).json({
       success: true,
@@ -74,15 +74,15 @@ export const deleteTeam = async (req, res, next) => {
       "user",
       "referredBy"
     );
-    // for (const member of members) {
-    //   try {
-    //     if (member.user && member.user.referredBy) {
-    //       await updateCAPoints(member.user.referredBy, -15);
-    //     }
-    //   } catch (error) {
-    //     console.error(error);
-    //   }
-    // }
+    for (const member of members) {
+      try {
+        if (member.user && member.user.referredBy) {
+          await updateCAPoints(member.user.referredBy, -10);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
     await Team.deleteOne({ teamCode });
     await Members.deleteMany({ team: team._id });
 

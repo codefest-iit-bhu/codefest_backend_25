@@ -134,15 +134,15 @@ export const passwordSetter = async (req, res, next) => {
 
     const hashedpswd = await bcrypt.hash(password, 10);
 
-    // const referralCode = user.referredBy;
-    // if (referralCode) {
-    //   const ca = await CARequest.findOne({ referralCode });
-    //   if (ca && ca.status === "approved") {
-    //     const points = 10;
-    //     ca.points += points;
-    //     await ca.save();
-    //   }
-    // }
+    const referralCode = user.referredBy;
+    if (referralCode) {
+      const ca = await CARequest.findOne({ referralCode });
+      if (ca && ca.status === "approved") {
+        const points = 20;
+        ca.points += points;
+        await ca.save();
+      }
+    }
 
     user.password = hashedpswd;
     await user.save();
@@ -210,16 +210,16 @@ export const verifyEmail = async (req, res, next) => {
     if (!verification || verification.code != otp)
       return next(new ErrorHandler("OTP Invalid or Expired", 400));
 
-    // if (verification.referralCode) {
-    //   const ca = await CARequest.findOne({
-    //     referralCode: verification.referralCode,
-    //   });
-    //   if (ca && ca.status === "approved") {
-    //     const points = 10;
-    //     ca.points += points;
-    //     await ca.save();
-    //   }
-    // }
+    if (verification.referralCode) {
+      const ca = await CARequest.findOne({
+        referralCode: verification.referralCode,
+      });
+      if (ca && ca.status === "approved") {
+        const points = 20;
+        ca.points += points;
+        await ca.save();
+      }
+    }
     const user = await User.create({
       name: verification.name,
       email: verification.email,
