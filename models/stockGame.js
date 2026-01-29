@@ -14,7 +14,7 @@ const stockSchema = new mongoose.Schema({
     required: true,
   },
   percentChanges: {
-    type: [Number], // Array of 10 percent changes for each year
+    type: [Number], // Array of 10 percent changes for each round
     required: true,
   },
 });
@@ -37,6 +37,11 @@ const gameConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  status: {
+    type: String,
+    enum: ["scheduled", "active", "finished"],
+    default: "scheduled",
+  },
   currentRound: {
     type: Number,
     default: 0,
@@ -46,6 +51,7 @@ const gameConfigSchema = new mongoose.Schema({
   },
   scheduledStartTime: {
     type: Date,
+    required: true,
   },
   createdAt: {
     type: Date,
