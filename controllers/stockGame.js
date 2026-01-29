@@ -21,12 +21,12 @@ export const createGameConfig = async (req, res, next) => {
       return next(new ErrorHandler("Exactly 10 stocks are required", 400));
     }
 
-    // Validate each stock has 10 percent changes
+    // Validate each stock has 10 final prices
     for (const stock of stocks) {
-      if (stock.percentChanges.length !== 10) {
+      if (stock.finalPrices.length !== 10) {
         return next(
           new ErrorHandler(
-            `Stock ${stock.symbol} must have exactly 10 percent changes`,
+            `Stock ${stock.symbol} must have exactly 10 final prices`,
             400
           )
         );
@@ -53,6 +53,7 @@ export const createGameConfig = async (req, res, next) => {
       totalRounds: totalRounds || 10,
       isActive: false,
       currentRound: 0,
+      roundStatus: "waiting",
       scheduledStartTime: startTime,
       status: "scheduled", // scheduled, active, finished
     });
@@ -102,6 +103,7 @@ export const startGame = async (req, res, next) => {
     gameConfig.isActive = true;
     gameConfig.status = "active";
     gameConfig.currentRound = 0;
+    gameConfig.roundStatus = "active"; // First round starts as active
     gameConfig.roundStartTime = new Date();
     await gameConfig.save();
 
@@ -115,7 +117,137 @@ export const startGame = async (req, res, next) => {
   }
 };
 
-// Admin: Advance to next round
+// Admin: End current round (stage 1 -> stage 2)
+export const endRound = async (req, res, next) => {
+  try {
+    if (req.user.role !== "admin") {
+      return next(new ErrorHandler("Only admins can end rounds", 403));
+    }
+
+    const { gameId } = req.params;
+    const gameConfig = await GameConfig.findById(gameId);
+
+    if (!gameConfig) {
+      return next(new ErrorHandler("Game configuration not found", 404));
+    }
+
+    if (!gameConfig.isActive) {
+      return next(new ErrorHandler("Game is not active", 400));
+    }
+
+    if (gameConfig.roundStatus !== "active") {
+      return next(
+        new ErrorHandler(
+          `Cannot end round. Current round status: ${gameConfig.roundStatus}`,
+          400
+        )
+      );
+    }
+
+    // Update all players' current round
+    await PlayerGame.updateMany(
+      { gameConfig: gameId, isActive: true },
+      { currentRound: gameConfig.currentRound }
+    );
+
+    // Calculate current scores for leaderboard
+    const players = await PlayerGame.find({
+      gameConfig: gameId,
+      isActive: true,
+    });
+
+    for (const player of players) {
+      const currentScore = calculateCurrentScore(player, gameConfig);
+      player.finalScore = currentScore;
+      await player.save();
+    }
+
+    // Change round status to ended
+    gameConfig.roundStatus = "ended";
+    await gameConfig.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Round ${gameConfig.currentRound + 1} ended. Ready to start next round.`,
+      gameConfig,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Start next round (stage 2 -> stage 3 -> stage 1 of next round)
+export const startNextRound = async (req, res, next) => {
+  try {
+    if (req.user.role !== "admin") {
+      return next(new ErrorHandler("Only admins can start rounds", 403));
+    }
+
+    const { gameId } = req.params;
+    const gameConfig = await GameConfig.findById(gameId);
+
+    if (!gameConfig) {
+      return next(new ErrorHandler("Game configuration not found", 404));
+    }
+
+    if (!gameConfig.isActive) {
+      return next(new ErrorHandler("Game is not active", 400));
+    }
+
+    if (gameConfig.roundStatus !== "ended") {
+      return next(
+        new ErrorHandler(
+          `Cannot start next round. Current round status: ${gameConfig.roundStatus}. End the current round first.`,
+          400
+        )
+      );
+    }
+
+    // Check if this was the last round
+    if (gameConfig.currentRound >= gameConfig.totalRounds - 1) {
+      // End game
+      gameConfig.isActive = false;
+      gameConfig.status = "finished";
+      gameConfig.roundStatus = "ended";
+      await gameConfig.save();
+
+      // Calculate final scores for all players
+      const players = await PlayerGame.find({
+        gameConfig: gameId,
+        isActive: true,
+      });
+
+      for (const player of players) {
+        const finalScore = calculateFinalScore(player, gameConfig);
+        player.finalScore = finalScore;
+        player.isActive = false;
+        await player.save();
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Game ended successfully",
+        gameConfig,
+      });
+    }
+
+    // Move to next round
+    gameConfig.currentRound += 1;
+    gameConfig.roundStatus = "active"; // New round becomes active
+    gameConfig.roundStartTime = new Date();
+    await gameConfig.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Round ${gameConfig.currentRound + 1} started`,
+      gameConfig,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DEPRECATED - keeping for backward compatibility but should not be used
 export const advanceRound = async (req, res, next) => {
   try {
     if (req.user.role !== "admin") {
@@ -173,12 +305,13 @@ export const advanceRound = async (req, res, next) => {
     }
 
     gameConfig.currentRound += 1;
+    gameConfig.roundStatus = "active";
     gameConfig.roundStartTime = new Date();
     await gameConfig.save();
 
     res.status(200).json({
       success: true,
-      message: `Advanced to round ${gameConfig.currentRound+1}`,
+      message: `Advanced to round ${gameConfig.currentRound + 1}`,
       gameConfig,
     });
   } catch (error) {
@@ -248,6 +381,15 @@ export const joinGame = async (req, res, next) => {
   }
 };
 
+// Helper function to get current price for a stock at a given round
+function getCurrentPrice(stock, round) {
+  if (round === 0) {
+    return stock.initialPrice;
+  }
+  // For round 1-10, use finalPrices[0-9]
+  return stock.finalPrices[round - 1];
+}
+
 // User: Get current game state
 export const getGameState = async (req, res, next) => {
   try {
@@ -265,24 +407,27 @@ export const getGameState = async (req, res, next) => {
 
     // Calculate current stock prices
     const currentStockPrices = gameConfig.stocks.map((stock) => {
-      let currentPrice = stock.initialPrice;
-      for (let i = 0; i < gameConfig.currentRound; i++) {
-        currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
-      }
+      const currentPrice = getCurrentPrice(stock, gameConfig.currentRound);
+      const previousPrice =
+        gameConfig.currentRound > 0
+          ? getCurrentPrice(stock, gameConfig.currentRound - 1)
+          : stock.initialPrice;
+
       return {
         name: stock.name,
         symbol: stock.symbol,
         currentPrice: parseFloat(currentPrice.toFixed(2)),
-        change:
-          gameConfig.currentRound > 0
-            ? stock.percentChanges[gameConfig.currentRound - 1]
-            : 0,
+        previousPrice: parseFloat(previousPrice.toFixed(2)),
       };
     });
 
-    // Calculate time remaining in current round
+    // Calculate time remaining in current round (only if round is active)
     let timeRemaining = 0;
-    if (gameConfig.isActive && gameConfig.roundStartTime) {
+    if (
+      gameConfig.isActive &&
+      gameConfig.roundStatus === "active" &&
+      gameConfig.roundStartTime
+    ) {
       const timeElapsed =
         Date.now() - new Date(gameConfig.roundStartTime).getTime();
       timeRemaining = Math.max(
@@ -299,6 +444,7 @@ export const getGameState = async (req, res, next) => {
         totalRounds: gameConfig.totalRounds,
         isActive: gameConfig.isActive,
         status: gameConfig.status,
+        roundStatus: gameConfig.roundStatus,
         scheduledStartTime: gameConfig.scheduledStartTime,
         timeRemaining: Math.floor(timeRemaining / 1000), // in seconds
       },
@@ -310,7 +456,7 @@ export const getGameState = async (req, res, next) => {
   }
 };
 
-// User: Buy stocks (only if time remaining > 0)
+// User: Buy stocks (only if round is active and time remaining > 0)
 export const buyStock = async (req, res, next) => {
   try {
     const { gameId } = req.params;
@@ -325,6 +471,20 @@ export const buyStock = async (req, res, next) => {
       return next(new ErrorHandler("Game is not active", 400));
     }
 
+    // Check if round is active
+    if (gameConfig.roundStatus !== "active") {
+      return next(
+        new ErrorHandler(
+          `Trading is not available. Round status: ${gameConfig.roundStatus}. ${
+            gameConfig.roundStatus === "ended"
+              ? "Waiting for admin to start next round."
+              : "Waiting for round to begin."
+          }`,
+          400
+        )
+      );
+    }
+
     // Check if time has expired for current round
     if (gameConfig.roundStartTime) {
       const timeElapsed =
@@ -334,7 +494,7 @@ export const buyStock = async (req, res, next) => {
       if (timeRemaining <= 0) {
         return next(
           new ErrorHandler(
-            "Time expired for this round. Waiting for admin to advance to next round.",
+            "Time expired for this round. Waiting for admin to end the round.",
             400
           )
         );
@@ -358,12 +518,8 @@ export const buyStock = async (req, res, next) => {
 
     const transactionRound = gameConfig.currentRound;
 
-    // Calculate current stock price
-    let currentPrice = stock.initialPrice;
-    for (let i = 0; i < transactionRound; i++) {
-      currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
-    }
-
+    // Get current stock price
+    const currentPrice = getCurrentPrice(stock, transactionRound);
     const totalCost = currentPrice * units;
 
     if (playerGame.balance < totalCost) {
@@ -373,29 +529,20 @@ export const buyStock = async (req, res, next) => {
     // Update balance
     playerGame.balance -= totalCost;
 
-    // Update portfolio
+    // Update portfolio - just add units with purchase price
     const portfolioIndex = playerGame.portfolio.findIndex(
       (p) => p.stock === stockSymbol
     );
 
     if (portfolioIndex >= 0) {
-      const existingUnits = playerGame.portfolio[portfolioIndex].units;
-      const existingAvgPrice =
-        playerGame.portfolio[portfolioIndex].averagePrice;
-      const newTotalUnits = existingUnits + units;
-      const newAvgPrice =
-        (existingUnits * existingAvgPrice + units * currentPrice) /
-        newTotalUnits;
-
-      playerGame.portfolio[portfolioIndex].units = newTotalUnits;
-      playerGame.portfolio[portfolioIndex].averagePrice = parseFloat(
-        newAvgPrice.toFixed(2)
-      );
+      playerGame.portfolio[portfolioIndex].units += units;
+      // Keep the original purchase price (first time this stock was bought)
+      // Don't update purchasePrice
     } else {
       playerGame.portfolio.push({
         stock: stockSymbol,
         units,
-        averagePrice: parseFloat(currentPrice.toFixed(2)),
+        purchasePrice: parseFloat(currentPrice.toFixed(2)),
       });
     }
 
@@ -421,7 +568,7 @@ export const buyStock = async (req, res, next) => {
   }
 };
 
-// User: Sell stocks (only if time remaining > 0)
+// User: Sell stocks (only if round is active and time remaining > 0)
 export const sellStock = async (req, res, next) => {
   try {
     const { gameId } = req.params;
@@ -436,6 +583,20 @@ export const sellStock = async (req, res, next) => {
       return next(new ErrorHandler("Game is not active", 400));
     }
 
+    // Check if round is active
+    if (gameConfig.roundStatus !== "active") {
+      return next(
+        new ErrorHandler(
+          `Trading is not available. Round status: ${gameConfig.roundStatus}. ${
+            gameConfig.roundStatus === "ended"
+              ? "Waiting for admin to start next round."
+              : "Waiting for round to begin."
+          }`,
+          400
+        )
+      );
+    }
+
     // Check if time has expired for current round
     if (gameConfig.roundStartTime) {
       const timeElapsed =
@@ -445,7 +606,7 @@ export const sellStock = async (req, res, next) => {
       if (timeRemaining <= 0) {
         return next(
           new ErrorHandler(
-            "Time expired for this round. Waiting for admin to advance to next round.",
+            "Time expired for this round. Waiting for admin to end the round.",
             400
           )
         );
@@ -481,12 +642,8 @@ export const sellStock = async (req, res, next) => {
 
     const transactionRound = gameConfig.currentRound;
 
-    // Calculate current stock price
-    let currentPrice = stock.initialPrice;
-    for (let i = 0; i < transactionRound; i++) {
-      currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
-    }
-
+    // Get current stock price
+    const currentPrice = getCurrentPrice(stock, transactionRound);
     const totalRevenue = currentPrice * units;
 
     // Update balance
@@ -538,9 +695,9 @@ export const getLeaderboard = async (req, res, next) => {
       .limit(100);
 
     // Calculate current scores for active games
-    if (gameConfig.isActive) {
+    if (gameConfig.isActive || gameConfig.status === "finished") {
       for (let player of players) {
-        if (player.isActive) {
+        if (player.isActive || gameConfig.status === "finished") {
           player.finalScore = calculateCurrentScore(player, gameConfig);
         }
       }
@@ -625,14 +782,7 @@ export const getGameDetails = async (req, res, next) => {
 
     // Calculate final stock prices
     const finalStockPrices = gameConfig.stocks.map((stock) => {
-      let finalPrice = stock.initialPrice;
-      const roundsToCalculate = gameConfig.isActive
-        ? gameConfig.currentRound
-        : gameConfig.totalRounds;
-
-      for (let i = 0; i < roundsToCalculate; i++) {
-        finalPrice = finalPrice * (1 + stock.percentChanges[i] / 100);
-      }
+      const finalPrice = stock.finalPrices[stock.finalPrices.length - 1];
 
       return {
         name: stock.name,
@@ -665,10 +815,7 @@ function calculateCurrentScore(playerGame, gameConfig) {
   for (const holding of playerGame.portfolio) {
     const stock = gameConfig.stocks.find((s) => s.symbol === holding.stock);
     if (stock) {
-      let currentPrice = stock.initialPrice;
-      for (let i = 0; i < gameConfig.currentRound; i++) {
-        currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
-      }
+      const currentPrice = getCurrentPrice(stock, gameConfig.currentRound);
       portfolioValue += holding.units * currentPrice;
     }
   }
@@ -683,10 +830,8 @@ function calculateFinalScore(playerGame, gameConfig) {
   for (const holding of playerGame.portfolio) {
     const stock = gameConfig.stocks.find((s) => s.symbol === holding.stock);
     if (stock) {
-      let finalPrice = stock.initialPrice;
-      for (let i = 0; i < gameConfig.totalRounds; i++) {
-        finalPrice = finalPrice * (1 + stock.percentChanges[i] / 100);
-      }
+      // Use the last final price
+      const finalPrice = stock.finalPrices[stock.finalPrices.length - 1];
       portfolioValue += holding.units * finalPrice;
     }
   }
