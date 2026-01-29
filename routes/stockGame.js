@@ -11,6 +11,8 @@ import {
   getLeaderboard,
   getActiveGames,
   getMyGames,
+  getAllGames,
+  getGameDetails,
 } from "../controllers/stockGame.js";
 
 const router = express.Router();
@@ -19,10 +21,12 @@ const router = express.Router();
 router.post("/config", isAuthenticated, createGameConfig);
 router.post("/start/:gameId", isAuthenticated, startGame);
 router.post("/advance/:gameId", isAuthenticated, advanceRound);
+router.get("/all", isAuthenticated, getAllGames); // NEW: Get all games for admin
 
 // User routes
 router.get("/active", isAuthenticated, getActiveGames);
 router.get("/my-games", isAuthenticated, getMyGames);
+router.get("/details/:gameId", isAuthenticated, getGameDetails); // NEW: Get game details
 router.post("/join/:gameId", isAuthenticated, joinGame);
 router.get("/state/:gameId", isAuthenticated, getGameState);
 router.post("/buy/:gameId", isAuthenticated, buyStock);

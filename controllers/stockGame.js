@@ -1,6 +1,33 @@
 import { GameConfig, PlayerGame } from "../models/stockGame.js";
 import ErrorHandler from "../middlewares/error.js";
 
+// Helper function to check and auto-start scheduled games
+const checkAndStartScheduledGames = async () => {
+  try {
+    const now = new Date();
+    const scheduledGames = await GameConfig.find({
+      isActive: false,
+      scheduledStartTime: { $lte: now, $ne: null },
+    });
+
+    for (const game of scheduledGames) {
+      if (
+        !game.isActive &&
+        game.scheduledStartTime &&
+        game.scheduledStartTime <= now
+      ) {
+        game.isActive = true;
+        game.currentRound = 0;
+        game.roundStartTime = new Date();
+        await game.save();
+        console.log(`Auto-started game ${game._id} at scheduled time`);
+      }
+    }
+  } catch (error) {
+    console.error("Error checking scheduled games:", error);
+  }
+};
+
 // Admin: Create/Update game configuration
 export const createGameConfig = async (req, res, next) => {
   try {
@@ -8,7 +35,13 @@ export const createGameConfig = async (req, res, next) => {
       return next(new ErrorHandler("Only admins can create game config", 403));
     }
 
-    const { stocks, initialBalance, roundDuration, totalRounds } = req.body;
+    const {
+      stocks,
+      initialBalance,
+      roundDuration,
+      totalRounds,
+      scheduledStartTime,
+    } = req.body;
 
     // Validate stocks
     if (!stocks || stocks.length !== 10) {
@@ -27,6 +60,17 @@ export const createGameConfig = async (req, res, next) => {
       }
     }
 
+    // Validate scheduled start time (must be in future)
+    let startTime = null;
+    if (scheduledStartTime) {
+      startTime = new Date(scheduledStartTime);
+      if (startTime <= new Date()) {
+        return next(
+          new ErrorHandler("Scheduled start time must be in the future", 400)
+        );
+      }
+    }
+
     const gameConfig = await GameConfig.create({
       stocks,
       initialBalance: initialBalance || 100000,
@@ -34,11 +78,14 @@ export const createGameConfig = async (req, res, next) => {
       totalRounds: totalRounds || 10,
       isActive: false,
       currentRound: 0,
+      scheduledStartTime: startTime,
     });
 
     res.status(201).json({
       success: true,
-      message: "Game configuration created successfully",
+      message: scheduledStartTime
+        ? `Game configuration created successfully. Will start at ${new Date(scheduledStartTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`
+        : "Game configuration created successfully",
       gameConfig,
     });
   } catch (error) {
@@ -58,6 +105,10 @@ export const startGame = async (req, res, next) => {
 
     if (!gameConfig) {
       return next(new ErrorHandler("Game configuration not found", 404));
+    }
+
+    if (gameConfig.isActive) {
+      return next(new ErrorHandler("Game is already active", 400));
     }
 
     gameConfig.isActive = true;
@@ -111,6 +162,8 @@ export const advanceRound = async (req, res, next) => {
         await player.save();
       }
 
+      console.log(gameConfig);
+
       return res.status(200).json({
         success: true,
         message: "Game ended successfully",
@@ -141,6 +194,9 @@ export const advanceRound = async (req, res, next) => {
 // User: Join the game
 export const joinGame = async (req, res, next) => {
   try {
+    // Check for scheduled games that should start
+    // await checkAndStartScheduledGames();
+
     const { gameId } = req.params;
     const gameConfig = await GameConfig.findById(gameId);
 
@@ -149,6 +205,17 @@ export const joinGame = async (req, res, next) => {
     }
 
     if (!gameConfig.isActive) {
+      if (
+        gameConfig.scheduledStartTime &&
+        gameConfig.scheduledStartTime > new Date()
+      ) {
+        return next(
+          new ErrorHandler(
+            `Game will start at ${gameConfig.scheduledStartTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
+            400
+          )
+        );
+      }
       return next(new ErrorHandler("Game is not active", 400));
     }
 
@@ -185,6 +252,9 @@ export const joinGame = async (req, res, next) => {
 // User: Get current game state
 export const getGameState = async (req, res, next) => {
   try {
+    // Check for scheduled games that should start
+    //await checkAndStartScheduledGames();
+
     const { gameId } = req.params;
     const gameConfig = await GameConfig.findById(gameId);
 
@@ -216,12 +286,15 @@ export const getGameState = async (req, res, next) => {
     });
 
     // Calculate time remaining in current round
-    const timeElapsed =
-      Date.now() - new Date(gameConfig.roundStartTime).getTime();
-    const timeRemaining = Math.max(
-      0,
-      gameConfig.roundDuration * 1000 - timeElapsed
-    );
+    let timeRemaining = 0;
+    if (gameConfig.isActive && gameConfig.roundStartTime) {
+      const timeElapsed =
+        Date.now() - new Date(gameConfig.roundStartTime).getTime();
+      timeRemaining = Math.max(
+        0,
+        gameConfig.roundDuration * 1000 - timeElapsed
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -229,6 +302,7 @@ export const getGameState = async (req, res, next) => {
         currentRound: gameConfig.currentRound,
         totalRounds: gameConfig.totalRounds,
         isActive: gameConfig.isActive,
+        scheduledStartTime: gameConfig.scheduledStartTime,
         timeRemaining: Math.floor(timeRemaining / 1000), // in seconds
       },
       stocks: currentStockPrices,
@@ -242,8 +316,6 @@ export const getGameState = async (req, res, next) => {
 // User: Buy stocks
 export const buyStock = async (req, res, next) => {
   try {
-    console.log(req.body);
-    console.log(req.params.gameId);
     const { gameId } = req.params;
     const { stockSymbol, units } = req.body;
 
@@ -271,9 +343,13 @@ export const buyStock = async (req, res, next) => {
       return next(new ErrorHandler("You haven't joined this game", 400));
     }
 
-    // Calculate current stock price
+    // CRITICAL FIX: Use playerGame.currentRound for transaction timing
+    // This ensures the transaction is recorded with the round it was made in
+    const transactionRound = playerGame.currentRound;
+
+    // Calculate current stock price based on player's current round
     let currentPrice = stock.initialPrice;
-    for (let i = 0; i < gameConfig.currentRound; i++) {
+    for (let i = 0; i < transactionRound; i++) {
       currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
     }
 
@@ -312,13 +388,14 @@ export const buyStock = async (req, res, next) => {
       });
     }
 
-    // Add to transaction history
+    // Add to transaction history with the round at time of transaction
     playerGame.transactionHistory.push({
-      round: gameConfig.currentRound,
+      round: transactionRound,
       type: "buy",
       stock: stockSymbol,
       units,
       price: parseFloat(currentPrice.toFixed(2)),
+      timestamp: new Date(),
     });
 
     await playerGame.save();
@@ -375,9 +452,12 @@ export const sellStock = async (req, res, next) => {
       return next(new ErrorHandler("Insufficient stock units", 400));
     }
 
-    // Calculate current stock price
+    // CRITICAL FIX: Use playerGame.currentRound for transaction timing
+    const transactionRound = playerGame.currentRound;
+
+    // Calculate current stock price based on player's current round
     let currentPrice = stock.initialPrice;
-    for (let i = 0; i < gameConfig.currentRound; i++) {
+    for (let i = 0; i < transactionRound; i++) {
       currentPrice = currentPrice * (1 + stock.percentChanges[i] / 100);
     }
 
@@ -394,13 +474,14 @@ export const sellStock = async (req, res, next) => {
       playerGame.portfolio.splice(portfolioIndex, 1);
     }
 
-    // Add to transaction history
+    // Add to transaction history with the round at time of transaction
     playerGame.transactionHistory.push({
-      round: gameConfig.currentRound,
+      round: transactionRound,
       type: "sell",
       stock: stockSymbol,
       units,
       price: parseFloat(currentPrice.toFixed(2)),
+      timestamp: new Date(),
     });
 
     await playerGame.save();
@@ -437,7 +518,31 @@ export const getLeaderboard = async (req, res, next) => {
 // Get all active games
 export const getActiveGames = async (req, res, next) => {
   try {
+    // Check for scheduled games that should start
+    // await checkAndStartScheduledGames();
+
     const games = await GameConfig.find({ isActive: true });
+
+    res.status(200).json({
+      success: true,
+      games,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// NEW: Get all games (for admin to see all games including finished ones)
+export const getAllGames = async (req, res, next) => {
+  try {
+    if (req.user.role !== "admin") {
+      return next(new ErrorHandler("Only admins can view all games", 403));
+    }
+
+    // Check for scheduled games that should start
+    // await checkAndStartScheduledGames();
+
+    const games = await GameConfig.find().sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -458,6 +563,56 @@ export const getMyGames = async (req, res, next) => {
     res.status(200).json({
       success: true,
       games,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// NEW: Get specific game details (for viewing past games)
+export const getGameDetails = async (req, res, next) => {
+  try {
+    const { gameId } = req.params;
+
+    const gameConfig = await GameConfig.findById(gameId);
+    if (!gameConfig) {
+      return next(new ErrorHandler("Game not found", 404));
+    }
+
+    const playerGame = await PlayerGame.findOne({
+      user: req.user._id,
+      gameConfig: gameId,
+    });
+
+    // Calculate final stock prices for finished games
+    const finalStockPrices = gameConfig.stocks.map((stock) => {
+      let finalPrice = stock.initialPrice;
+      const roundsToCalculate = gameConfig.isActive
+        ? gameConfig.currentRound
+        : gameConfig.totalRounds;
+
+      for (let i = 0; i < roundsToCalculate; i++) {
+        finalPrice = finalPrice * (1 + stock.percentChanges[i] / 100);
+      }
+
+      return {
+        name: stock.name,
+        symbol: stock.symbol,
+        finalPrice: parseFloat(finalPrice.toFixed(2)),
+        totalChange: parseFloat(
+          (
+            ((finalPrice - stock.initialPrice) / stock.initialPrice) *
+            100
+          ).toFixed(2)
+        ),
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      gameConfig,
+      playerGame,
+      stocks: finalStockPrices,
     });
   } catch (error) {
     next(error);

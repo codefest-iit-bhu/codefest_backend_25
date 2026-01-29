@@ -44,6 +44,9 @@ const gameConfigSchema = new mongoose.Schema({
   roundStartTime: {
     type: Date,
   },
+  scheduledStartTime: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -67,6 +70,34 @@ const playerPortfolioSchema = new mongoose.Schema({
   },
 });
 
+const transactionSchema = new mongoose.Schema({
+  round: {
+    type: Number,
+    required: true,
+  },
+  type: {
+    type: String,
+    enum: ["buy", "sell"],
+    required: true,
+  },
+  stock: {
+    type: String,
+    required: true,
+  },
+  units: {
+    type: Number,
+    required: true,
+  },
+  price: {
+    type: Number,
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const playerGameSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -87,21 +118,7 @@ const playerGameSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  transactionHistory: {
-    type: Array
-
-    // {
-    //   round: Number,
-    //   type: String, // 'buy' or 'sell'
-    //   stock: String,
-    //   units: Number,
-    //   price: Number,
-    //   timestamp: {
-    //     type: Date,
-    //     default: Date.now,
-    //   },
-    // },
-  },
+  transactionHistory: [transactionSchema],
   finalScore: {
     type: Number,
     default: 0,
