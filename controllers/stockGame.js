@@ -23,7 +23,7 @@ export const createGameConfig = async (req, res, next) => {
 
     // Validate each stock has 10 final prices
     for (const stock of stocks) {
-      if (stock.finalPrices.length !== 10) {
+      if (stock.finalPrices.length !== 13) {
         return next(
           new ErrorHandler(
             `Stock ${stock.symbol} must have exactly 10 final prices`,
