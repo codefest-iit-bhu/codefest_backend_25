@@ -16,6 +16,7 @@ import winzoRouter from "./routes/winzo.js";
 import swaggerUi from "swagger-ui-express";
 import { loadSwaggerWithDynamicUrl } from "./utils/features.js";
 import { cbMiddleware } from "./middlewares/auth.js";
+import stockGameRouter from "./routes/stockGame.js";
 
 export const app = express();
 app.use(cors());
@@ -73,6 +74,7 @@ app.use("/api/v1/ca", caRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/event", eventRouter);
 app.use("/api/v1/winzo", winzoRouter);
+app.use("/api/v1/stockGame", stockGameRouter);
 
 app.get("/", (req, res) => {
   res.send("Server is working");
