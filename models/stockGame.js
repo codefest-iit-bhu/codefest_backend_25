@@ -13,8 +13,8 @@ const stockSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  percentChanges: {
-    type: [Number], // Array of 10 percent changes for each round
+  finalPrices: {
+    type: [Number], // Array of final prices for each round (10 prices total)
     required: true,
   },
 });
@@ -46,6 +46,11 @@ const gameConfigSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  roundStatus: {
+    type: String,
+    enum: ["active", "ended", "waiting"],
+    default: "waiting", // waiting = waiting for next round to start, active = round in progress, ended = round finished but not moved to next
+  },
   roundStartTime: {
     type: Date,
   },
@@ -69,7 +74,7 @@ const playerPortfolioSchema = new mongoose.Schema({
     required: true,
     default: 0,
   },
-  averagePrice: {
+  purchasePrice: {
     type: Number,
     required: true,
     default: 0,

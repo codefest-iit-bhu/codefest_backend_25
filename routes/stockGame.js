@@ -3,7 +3,9 @@ import { isAuthenticated } from "../middlewares/auth.js";
 import {
   createGameConfig,
   startGame,
-  advanceRound,
+  advanceRound, // Deprecated but kept for backward compatibility
+  endRound,
+  startNextRound,
   joinGame,
   getGameState,
   buyStock,
@@ -20,13 +22,15 @@ const router = express.Router();
 // Admin routes
 router.post("/config", isAuthenticated, createGameConfig);
 router.post("/start/:gameId", isAuthenticated, startGame);
-router.post("/advance/:gameId", isAuthenticated, advanceRound);
-router.get("/all", isAuthenticated, getAllGames); // NEW: Get all games for admin
+router.post("/end-round/:gameId", isAuthenticated, endRound); // NEW: End current round
+router.post("/start-next-round/:gameId", isAuthenticated, startNextRound); // NEW: Start next round
+router.post("/advance/:gameId", isAuthenticated, advanceRound); // DEPRECATED: Kept for backward compatibility
+router.get("/all", isAuthenticated, getAllGames);
 
 // User routes
 router.get("/active", isAuthenticated, getActiveGames);
 router.get("/my-games", isAuthenticated, getMyGames);
-router.get("/details/:gameId", isAuthenticated, getGameDetails); // NEW: Get game details
+router.get("/details/:gameId", isAuthenticated, getGameDetails);
 router.post("/join/:gameId", isAuthenticated, joinGame);
 router.get("/state/:gameId", isAuthenticated, getGameState);
 router.post("/buy/:gameId", isAuthenticated, buyStock);
